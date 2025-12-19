@@ -1,404 +1,251 @@
-# 文档管理接口
+# 文献管理模块 API 文档
 
-## 获取文档列表
+## 📖 概述
 
-**接口名称：** 获取文档列表  
-**功能描述：** 分页获取文档列表，支持分类筛选和搜索  
-**接口地址：** `/api/documents`  
-**请求方式：** GET
+本模块负责处理文献（PDF）的生命周期管理。包括文件的上传存储、元数据管理（标题、分类）、列表查询以及文件二进制流的读取。
 
-### 功能说明
+**设计理念说明：** 我们将“元数据管理”与“文件流服务”合并在本文档中。虽然在后端代码中它们可能分属 `DocumentController` 和 `FileController`，但对前端而言，它们都是对 **Document (文献)** 这一资源的操作。
 
-该接口用于获取系统中的文档列表，支持按分类筛选、关键词搜索和分页查询。可用于工作台文档展示、分类浏览等场景。
+## 🔗 基础信息
 
-```mermaid
-sequenceDiagram
-    participant Client
-    participant Server
-    participant Database
-    Client->>Server: GET /api/documents
-    Server->>Database: 查询文档数据
-    Database-->>Server: 返回文档列表
-    Server-->>Client: 返回响应数据
+- **基础 URL：** `/api/documents`
+- **服务端口：** `10150` (参考 `application.yaml`)
+- **认证方式：** Header 中需携带 Token (参考 `UserContextUtil`)
+- **数据格式：**
+  - 请求体：`multipart/form-data` (上传) 或 `application/json` (其他)
+  - 响应体：标准 `Result<T>` 封装
+
+## 📋 接口列表
+
+### 1. 上传文献
+
+**接口名称：** 上传并创建文献
+
+**接口地址：** `/api/documents/upload`
+
+**请求方式：** `POST`
+
+**Content-Type：** `multipart/form-data`
+
+#### ⚙️ 功能说明
+
+用户上传 PDF 文件。
+
+- **后端逻辑**：后端会接收文件 -> 计算 MD5 (防重复) -> 存储到本地/OSS -> 提取文件名作为默认标题 -> 写入数据库 -> 触发异步解析任务（如有）。
+- **状态流转**：上传成功后，文档的解析状态 (`parseStatus`) 默认为 `PENDING` 或 `PROCESSING`。
+
+#### 📥 请求参数 (Form-Data)
+
+| 参数名         | 类型 | 必填 | 说明                              |
+| -------------- | ---- | ---- | --------------------------------- |
+| **file**       | File | ✅ 是 | PDF 文件二进制流 (限制 50MB)      |
+| **categoryId** | Long | ❌ 否 | 分类 ID。如果不传，归为默认分类。 |
+
+#### 📤 响应参数 (`Result<DocumentUploadResponse>`)
+
 ```
-
-### 请求参数
-
-| 参数名 | 类型 | 必填 | 说明 | 示例值 |
-|-------|------|-----|------|--------|
-| category_id | string | 否 | 分类ID，不传或传"all"表示获取全部 | "cat_1" |
-| search | string | 否 | 搜索关键词，支持标题、作者、摘要搜索 | "transformer" |
-| page | int | 否 | 页码，从1开始（默认1） | 2 |
-| pageSize | int | 否 | 每页数量（默认10，最大100） | 20 |
-
-### 响应参数
-
-**成功响应示例：**
-```json
 {
   "code": 200,
-  "msg": "success",
-  "data": [
-    {
-      "id": "doc_1",
-      "title": "Attention Is All You Need",
-      "filename": "attention_is_all_you_need.pdf",
-      "category_id": "cat_2",
-      "author": "Vaswani et al.",
-      "upload_date": "2024-01-15T10:30:00Z",
-      "file_size": "2.3 MB",
-      "pages": 15,
-      "status": "ready",
-      "thumbnail": "https://example.com/thumbnail.jpg",
-      "abstract": "The dominant sequence transduction models...",
-      "tags": ["transformer", "attention", "nlp"],
-      "read_progress": 0.6
-    }
-  ]
-}
-```
-
-**错误响应示例：**
-```json
-{
-  "code": 400,
-  "msg": "页码参数错误",
-  "data": null
-}
-```
-
-**响应字段说明：**
-
-| 参数名 | 类型 | 必填 | 说明 | 示例值 |
-|-------|------|-----|------|--------|
-| code | int | 是 | 状态码 | 200 |
-| msg | string | 是 | 状态信息 | "success" |
-| data | array | 是 | 文档列表数据 | [] |
-| data[].id | string | 是 | 文档唯一标识 | "doc_1" |
-| data[].title | string | 是 | 文档标题 | "Attention Is All You Need" |
-| data[].filename | string | 是 | 文件名 | "attention_is_all_you_need.pdf" |
-| data[].category_id | string | 是 | 所属分类ID | "cat_2" |
-| data[].author | string | 是 | 作者 | "Vaswani et al." |
-| data[].upload_date | string | 是 | 上传时间（ISO格式） | "2024-01-15T10:30:00Z" |
-| data[].file_size | string | 是 | 文件大小 | "2.3 MB" |
-| data[].pages | int | 是 | 页数 | 15 |
-| data[].status | string | 是 | 处理状态：ready/processing | "ready" |
-| data[].thumbnail | string | 是 | 缩略图URL | "https://example.com/thumbnail.jpg" |
-| data[].abstract | string | 是 | 摘要 | "The dominant sequence..." |
-| data[].tags | array | 是 | 标签列表 | ["transformer", "attention"] |
-| data[].read_progress | float | 是 | 阅读进度（0-1） | 0.6 |
-
-### 接口权限要求
-- 需要用户登录
-- 无特殊权限限制
-
-### 接口调用频率限制
-- 每分钟最多100次请求
-
----
-
-## 获取文档详情
-
-**接口名称：** 获取文档详情  
-**功能描述：** 根据文档ID获取文档详细信息  
-**接口地址：** `/api/documents/{id}`  
-**请求方式：** GET
-
-### 功能说明
-
-根据文档ID获取单个文档的详细信息，用于文档阅读页面、详情展示等场景。
-
-### 请求参数
-
-**路径参数：**
-
-| 参数名 | 类型 | 必填 | 说明 | 示例值 |
-|-------|------|-----|------|--------|
-| id | string | 是 | 文档ID | "doc_1" |
-
-### 响应参数
-
-**成功响应示例：**
-```json
-{
-  "code": 200,
-  "msg": "success",
+  "message": "操作成功",
   "data": {
-    "id": "doc_1",
-    "title": "Attention Is All You Need",
-    "filename": "attention_is_all_you_need.pdf",
-    "category_id": "cat_2",
-    "author": "Vaswani et al.",
-    "upload_date": "2024-01-15T10:30:00Z",
-    "file_size": "2.3 MB",
-    "pages": 15,
-    "status": "ready",
-    "thumbnail": "https://example.com/thumbnail.jpg",
-    "abstract": "The dominant sequence transduction models...",
-    "tags": ["transformer", "attention", "nlp"],
-    "read_progress": 0.6
+    "id": "1865230658941235200",
+    "filename": "Attention_Is_All_You_Need.pdf",
+    "status": 1,
+    "uploadTime": "2025-12-19 10:00:00"
   }
 }
 ```
 
-**错误响应示例：**
-```json
-{
-  "code": 404,
-  "msg": "文档不存在",
-  "data": null
-}
-```
+### 2. 获取文献列表 (分页)
 
-### 接口权限要求
-- 需要用户登录
-- 只能查看自己上传的文档
+**接口名称：** 文献列表查询
 
----
+**接口地址：** `/api/documents`
 
-## 上传文档
-
-**接口名称：** 上传文档  
-**功能描述：** 上传PDF文档并进行解析处理  
-**接口地址：** `/api/documents/upload`  
-**请求方式：** POST
-
-### 功能说明
-
-支持用户上传PDF文档，系统会自动进行文档解析、缩略图生成等处理。上传后文档状态为"processing"，处理完成后变为"ready"。
-
-### 请求参数
-
-**请求体参数（multipart/form-data）：**
-
-| 参数名 | 类型 | 必填 | 说明 | 示例值 |
-|-------|------|-----|------|--------|
-| file | File | 是 | PDF文件，最大50MB | - |
-| title | string | 否 | 文档标题，不传则使用文件名 | "深度学习论文" |
-| category_id | string | 否 | 分类ID，不传则放入默认分类 | "cat_1" |
-
-### 响应参数
-
-**成功响应示例：**
-```json
-{
-  "code": 200,
-  "msg": "success",
-  "data": {
-    "id": "doc_123456789",
-    "title": "新上传文档",
-    "filename": "document.pdf",
-    "category_id": "cat_1",
-    "author": "未知作者",
-    "upload_date": "2024-01-21T10:30:00Z",
-    "file_size": "1.5 MB",
-    "pages": 10,
-    "status": "processing",
-    "thumbnail": "https://example.com/default-thumbnail.jpg",
-    "abstract": "文档正在处理中...",
-    "tags": [],
-    "read_progress": 0
-  }
-}
-```
-
-**错误响应示例：**
-```json
-{
-  "code": 400,
-  "msg": "文件格式不支持，仅支持PDF格式",
-  "data": null
-}
-```
-
-### 接口权限要求
-- 需要用户登录
-- 需要上传权限
-
-### 接口调用频率限制
-- 每小时最多上传20个文件
-
----
-
-## 更新阅读进度
-
-**接口名称：** 更新阅读进度  
-**功能描述：** 更新文档的阅读进度  
-**接口地址：** `/api/documents/{id}/progress`  
-**请求方式：** POST
-
-### 功能说明
-
-用于记录用户的文档阅读进度，支持断点续读功能。
-
-### 请求参数
-
-**路径参数：**
-
-| 参数名 | 类型 | 必填 | 说明 | 示例值 |
-|-------|------|-----|------|--------|
-| id | string | 是 | 文档ID | "doc_1" |
-
-**请求体参数：**
-```json
-{
-  "progress": 0.75
-}
-```
-
-| 参数名 | 类型 | 必填 | 说明 | 示例值 |
-|-------|------|-----|------|--------|
-| progress | float | 是 | 阅读进度，范围0-1 | 0.75 |
-
-### 响应参数
-
-**成功响应示例：**
-```json
-{
-  "code": 200,
-  "msg": "success",
-  "data": {
-    "progress": 0.75
-  }
-}
-```
-
-**错误响应示例：**
-```json
-{
-  "code": 400,
-  "msg": "进度值必须在0-1之间",
-  "data": null
-}
-```
-
----
-
-## 删除文档
-
-**接口名称：** 删除文档  
-**功能描述：** 删除指定的文档  
-**接口地址：** `/api/documents/{id}/delete`  
-**请求方式：** POST
-
-### 功能说明
-
-删除用户上传的文档，包括文件本体、缩略图、相关笔记等数据。删除操作不可恢复。
-
-### 请求参数
-
-**路径参数：**
-
-| 参数名 | 类型 | 必填 | 说明 | 示例值 |
-|-------|------|-----|------|--------|
-| id | string | 是 | 文档ID | "doc_1" |
-
-### 响应参数
-
-**成功响应示例：**
-```json
-{
-  "code": 200,
-  "msg": "success",
-  "data": null
-}
-```
-
-**错误响应示例：**
-```json
-{
-  "code": 404,
-  "msg": "文档不存在",
-  "data": null
-}
-```
-
-### 接口权限要求
-- 需要用户登录
-- 只能删除自己上传的文档
-
-### 相关业务规则说明
-- 删除文档会同时删除相关的笔记和标注
-- 删除操作不可恢复，请谨慎操作
-- 正在处理中的文档不能删除
-
----
-
-## 获取/下载文档文件（新）
-
-**接口名称：** 获取或下载文档原始文件  
-**功能描述：** 返回指定文档的 PDF（二进制流），支持断点续传与范围请求  
-**接口地址：** `/api/documents/{id}/file`  
 **请求方式：** `GET`
 
-### 功能说明
+#### ⚙️ 功能说明
 
-- 前端优先通过该接口获取 PDF；若接口不可用，则回退到网关静态映射 `/uploads/**`。
-- 支持 `Range` 请求，`Content-Type: application/pdf`，`Accept-Ranges: bytes`。
-- 需要登录态，并对文档归属进行权限校验。
+用于在“我的文献”页面展示列表。支持按分类筛选和关键词搜索。
 
-### 请求参数
+#### 📥 请求参数 (Query)
 
-**路径参数：**
+| 参数名         | 类型    | 必填 | 说明                           | 示例          |
+| -------------- | ------- | ---- | ------------------------------ | ------------- |
+| **page**       | Integer | ❌ 否 | 页码，默认 1                   | `1`           |
+| **pageSize**   | Integer | ❌ 否 | 每页条数，默认 10              | `10`          |
+| **categoryId** | Long    | ❌ 否 | 筛选特定分类下的文献           | `1865230...`  |
+| **keyword**    | String  | ❌ 否 | 搜索关键词（匹配标题或文件名） | `Transformer` |
 
-| 参数名 | 类型 | 必填 | 说明 | 示例值 |
-|-------|------|-----|------|--------|
-| id | string | 是 | 文档ID | `doc_1986804291322646528` |
+#### 📤 响应参数 (`Result<PageResult<DocumentListResponse>>`)
 
-**请求头（可选）：**
-
-- `Range: bytes=0-` 用于断点续传/分块加载
-- `Authorization: Bearer <token>` 按统一鉴权规范
-
-### 成功响应示例
+> **注意**：`id` 字段在 JSON 中应为 String 类型，防止 JavaScript 处理 Long 类型雪花 ID 时的精度丢失。
 
 ```
-HTTP/1.1 200 OK
-Content-Type: application/pdf
-Content-Length: 2256879
-Accept-Ranges: bytes
-
-<PDF二进制数据>
-```
-
-或范围响应：
-
-```
-HTTP/1.1 206 Partial Content
-Content-Type: application/pdf
-Content-Length: 1024
-Content-Range: bytes 0-1023/2256879
-Accept-Ranges: bytes
-
-<PDF二进制数据片段>
-```
-
-### 错误响应示例
-
-```json
 {
-  "code": 404,
-  "msg": "文件不存在",
-  "data": null
+  "code": 200,
+  "message": "success",
+  "data": {
+    "total": 52,
+    "records": [
+      {
+        "id": "1865230658941235200",
+        "title": "Attention Is All You Need",
+        "filename": "attention.pdf",
+        "size": 2048576,
+        "categoryName": "深度学习",
+        "parseStatus": "SUCCESS", 
+        "createTime": "2025-12-01 12:00:00"
+      }
+    ]
+  }
 }
 ```
 
-或权限错误：
+- `parseStatus` 说明：
+  - `WAITING`: 等待解析
+  - `PROCESSING`: 解析中 (前端可显示 Loading 动画)
+  - `SUCCESS`: 解析完成 (可点击阅读)
+  - `FAIL`: 解析失败
 
-```json
+### 3. 获取文献详情
+
+**接口名称：** 获取文献详情
+
+**接口地址：** `/api/documents/{id}`
+
+**请求方式：** `GET`
+
+#### ⚙️ 功能说明
+
+在点击列表项进入“阅读页”或“编辑页”时调用。包含比列表更详细的信息（如摘要、解析进度详情等）。
+
+#### 📥 请求参数 (Path)
+
+| 参数名 | 类型 | 必填 | 说明    |
+| ------ | ---- | ---- | ------- |
+| **id** | Long | ✅ 是 | 文献 ID |
+
+#### 📤 响应参数 (`Result<DocumentDetailResponse>`)
+
+```
 {
-  "code": 403,
-  "msg": "无权访问该文件",
-  "data": null
+  "code": 200,
+  "data": {
+    "id": "1865230658941235200",
+    "title": "Attention Is All You Need",
+    "description": "这是Transformer模型的开山之作...",
+    "pageCount": 15,
+    "categoryId": "1865230...",
+    "fileUrl": "/api/documents/1865230658941235200/file", 
+    "parseStatus": "SUCCESS"
+  }
 }
 ```
 
-### 后端实现建议
+- `fileUrl`: 前端 PDF 阅读器可以直接使用这个 URL 加载文件流。
 
-- Spring Boot：使用 `ResponseEntity<Resource>` 返回文件，开启范围支持；示例见 `docs/api/file-serving.md`。
-- Node/Express：使用 `fs.createReadStream` 处理 `Range` 请求；示例见 `docs/api/file-serving.md`。
-- 鉴权：根据 `document.ownerId` 与当前用户进行校验。
+### 4. 获取文献文件流 (预览/下载)
 
-### 与静态映射的关系
+**接口名称：** 获取 PDF 文件流
 
-- 若后端网关已将 `/uploads/**` 映射到存储目录，也可以直接通过静态路径访问；但建议以 `/api/documents/{id}/file` 为主，以便统一鉴权与审计。
+**接口地址：** `/api/documents/{id}/file`
+
+**请求方式：** `GET`
+
+#### ⚙️ 功能说明
+
+这是专门为 **PDF.js** 或浏览器原生预览器设计的接口。
+
+- 它支持 HTTP `Range` 头，允许断点续传和分片加载（对于大体积 PDF 非常重要，能极大提升首屏加载速度）。
+- **权限控制**：不同于直接访问静态资源服务器（Nginx），该接口经过了 Spring Security 拦截链，确保只有拥有权限的用户才能下载/预览该文件。
+
+#### 📥 请求参数 (Path & Header)
+
+| 参数名            | 位置   | 必填 | 说明                                                    |
+| ----------------- | ------ | ---- | ------------------------------------------------------- |
+| **id**            | Path   | ✅ 是 | 文献 ID                                                 |
+| **Range**         | Header | ❌ 否 | 字节范围 (例如 `bytes=0-1023`)，通常由 PDF 插件自动发送 |
+| **Authorization** | Header | ✅ 是 | Bearer Token                                            |
+
+#### 📤 响应内容
+
+- **Content-Type**: `application/pdf`
+- **Body**: 二进制文件流
+
+### 5. 修改文献信息
+
+**接口名称：** 更新文献元数据
+
+**接口地址：** `/api/documents/{id}`
+
+**请求方式：** `PUT`
+
+#### ⚙️ 功能说明
+
+用户修改标题、移动分类或添加备注描述。
+
+#### 📥 请求参数 (Body)
+
+```
+{
+  "title": "新标题",
+  "categoryId": "1865230...",
+  "description": "这是我修改后的备注"
+}
+```
+
+#### 📤 响应参数
+
+```
+{ "code": 200, "message": "操作成功", "data": true }
+```
+
+### 6. 删除文献
+
+**接口名称：** 删除文献
+
+**接口地址：** `/api/documents/{id}`
+
+**请求方式：** `DELETE`
+
+#### ⚙️ 功能说明
+
+逻辑删除或物理删除文献记录。
+
+- **级联操作**：删除文献通常意味着需要级联删除其产生的 向量数据(Vector)、笔记(Notes) 和 历史对话(ChatSession)。后端代码中应处理这些逻辑。
+
+#### 📥 请求参数 (Path)
+
+| 参数名 | 类型 | 必填 | 说明    |
+| ------ | ---- | ---- | ------- |
+| **id** | Long | ✅ 是 | 文献 ID |
+
+#### 📤 响应参数
+
+```
+{ "code": 200, "message": "操作成功", "data": true }
+```
+
+## 💡 重点补充说明（Wait, Why?）
+
+### 1. 为什么文件流接口 (`/file`) 不直接用 Nginx 静态代理？
+
+你可能会问，直接把文件扔到 Nginx 目录下让前端访问 `http://xxx/uploads/a.pdf` 不是更快吗？ **理由**：
+
+- **安全性 (Security)**：如果用 Nginx 静态代理，只要有人知道 URL 就能下载，无法验证用户是否登录，也无法验证该用户是否有权查看该文档（比如私有文档）。
+- **统一鉴权**：通过 Java 接口 `/api/documents/{id}/file`，我们可以复用现有的 JWT 认证体系。`FileController` 代码中显式调用了文件读取服务，确保了控制权在业务逻辑手中。
+
+### 2. 关于 ID 的精度问题
+
+后端数据库使用了 `Bigint` (Snowflake ID)，Java 中对应 `Long`。 前端 JavaScript 的 `Number` 类型最大安全整数是 $2^{53}-1$。Snowflake ID 通常会超过这个范围。 **解决方案**：后端在序列化 JSON 时，**必须**将 Long 类型的 ID 转换为 String 类型。
+
+- 检查代码：你的 `Document` 实体类中 ID 字段是否加了 `@JsonSerialize(using = ToStringSerializer.class)` 注解？如果没有，前端获取到的 ID 后面几位会变成 0，导致请求 404。请务必确认这一点。
+
+### 3. 解析状态的作用
+
+上传 PDF 不仅仅是“保存文件”。为了实现 AI 问答，后端需要对 PDF 进行：
+
+1. 文本提取 (OCR/Text Extraction)
+2. 分块 (Chunking)
+3. 向量化 (Embedding) **这个过程是耗时的。** 所以上传接口返回成功，只代表“文件存下来了”，不代表“AI 准备好了”。前端必须根据 `parseStatus` 来提示用户“AI 正在学习该文档，请稍候...”。

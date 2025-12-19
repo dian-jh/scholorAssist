@@ -92,7 +92,7 @@ public class GlobalResponseAdvice implements ResponseBodyAdvice<Object> {
 
         // 3. (核心) 注入 requestId 到最终的 Result 对象中
         // 无论成功失败，都在这里统一注入
-        result.setRequestId(requestId);
+        //result.setRequestId(requestId);
 
         return result;
     }
