@@ -1,0 +1,1440 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF阅读器 - 文献辅助阅读系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1763EA',
+                        'primary-dark': '#1451C7',
+                        background: '#F8FAFF'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .pdf-viewer {
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            position: relative;
+        }
+        
+        .text-selection-menu {
+            position: absolute;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            display: none;
+        }
+        
+        .highlight-text {
+            background-color: rgba(255, 235, 59, 0.3);
+            cursor: pointer;
+        }
+        
+        /* 波浪线标记样式 */
+        .wavy-underline {
+            position: relative;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+        }
+        
+        .wavy-underline::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            bottom: -2px;
+            width: 100%;
+            height: 2px;
+            background-image: url("data:image/svg+xml,%3csvg width='100' height='20' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='m0,15 q5,-10 10,0 t10,0 t10,0 t10,0 t10,0 t10,0 t10,0 t10,0 t10,0 t10,0' stroke='%23FFD700' stroke-width='2' fill='none'/%3e%3c/svg%3e");
+            background-repeat: repeat-x;
+            background-size: 20px 2px;
+            opacity: 0.8;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        
+        .wavy-underline.color-yellow::after {
+            background-image: url("data:image/svg+xml,%3csvg width='100' height='20' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='m0,15 q5,-10 10,0 t10,0 t10,0 t10,0 t10,0 t10,0 t10,0 t10,0 t10,0 t10,0' stroke='%23FFD700' stroke-width='2' fill='none'/%3e%3c/svg%3e");
+        }
+        
+        .wavy-underline.color-red::after {
+            background-image: url("data:image/svg+xml,%3csvg width='100' height='20' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='m0,15 q5,-10 10,0 t10,0 t10,0 t10,0 t10,0 t10,0 t10,0 t10,0 t10,0 t10,0' stroke='%23FF6B6B' stroke-width='2' fill='none'/%3e%3c/svg%3e");
+        }
+        
+        .wavy-underline.color-blue::after {
+            background-image: url("data:image/svg+xml,%3csvg width='100' height='20' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='m0,15 q5,-10 10,0 t10,0 t10,0 t10,0 t10,0 t10,0 t10,0 t10,0 t10,0 t10,0' stroke='%234ECDC4' stroke-width='2' fill='none'/%3e%3c/svg%3e");
+        }
+        
+        .wavy-underline.color-green::after {
+            background-image: url("data:image/svg+xml,%3csvg width='100' height='20' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='m0,15 q5,-10 10,0 t10,0 t10,0 t10,0 t10,0 t10,0 t10,0 t10,0 t10,0 t10,0' stroke='%2395E1A3' stroke-width='2' fill='none'/%3e%3c/svg%3e");
+        }
+        
+        .wavy-underline:hover::after {
+             opacity: 1;
+             transform: translateY(-1px);
+         }
+         
+         .wavy-underline.highlighted {
+             background-color: rgba(59, 130, 246, 0.1);
+             border-radius: 2px;
+             animation: highlightPulse 2s ease-in-out;
+         }
+         
+         .wavy-underline.highlighted::after {
+             opacity: 1;
+             animation: wavyPulse 2s ease-in-out;
+         }
+        
+        /* 笔记浮层样式 */
+        .note-tooltip {
+            position: absolute;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            padding: 16px;
+            max-width: 320px;
+            z-index: 2000;
+            display: none;
+            animation: tooltipFadeIn 0.2s ease-out;
+        }
+        
+        .note-tooltip::before {
+            content: '';
+            position: absolute;
+            top: -8px;
+            left: 20px;
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-bottom: 8px solid white;
+        }
+        
+        .note-tooltip.bottom::before {
+            top: auto;
+            bottom: -8px;
+            border-bottom: none;
+            border-top: 8px solid white;
+        }
+        
+        .note-tooltip-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        
+        .note-tooltip-title {
+            font-weight: 600;
+            color: #1e293b;
+            font-size: 14px;
+        }
+        
+        .note-tooltip-time {
+            font-size: 12px;
+            color: #64748b;
+        }
+        
+        .note-tooltip-content {
+            color: #374151;
+            font-size: 13px;
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+        
+        .note-tooltip-selected {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            padding: 8px;
+            font-size: 12px;
+            color: #64748b;
+            font-style: italic;
+        }
+        
+        .note-tooltip-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        
+        .note-tooltip-btn {
+            padding: 4px 8px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            background: white;
+            color: #374151;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .note-tooltip-btn:hover {
+            background: #f3f4f6;
+            border-color: #9ca3af;
+        }
+        
+        .note-tooltip-btn.primary {
+            background: #1763EA;
+            color: white;
+            border-color: #1763EA;
+        }
+        
+        .note-tooltip-btn.primary:hover {
+            background: #1451C7;
+        }
+        
+        /* 颜色选择器 */
+        .color-picker {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        
+        .color-option {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        
+        .color-option:hover {
+            transform: scale(1.1);
+        }
+        
+        .color-option.selected {
+            border-color: #1763EA;
+            box-shadow: 0 0 0 2px rgba(23, 99, 234, 0.2);
+        }
+        
+        .color-option.yellow { background: #FFD700; }
+        .color-option.red { background: #FF6B6B; }
+        .color-option.blue { background: #4ECDC4; }
+        .color-option.green { background: #95E1A3; }
+        
+        .note-marker {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #1763EA;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .note-marker i {
+            color: white;
+            font-size: 10px;
+        }
+        
+        .sidebar-panel {
+            transition: transform 0.3s ease-in-out;
+        }
+        
+        .sidebar-panel.collapsed {
+            transform: translateX(100%);
+        }
+        
+        /* 动画效果 */
+         @keyframes fadeIn {
+             from { opacity: 0; transform: translateY(2px); }
+             to { opacity: 0.8; transform: translateY(0); }
+         }
+         
+         @keyframes tooltipFadeIn {
+             from { opacity: 0; transform: translateY(-10px) scale(0.95); }
+             to { opacity: 1; transform: translateY(0) scale(1); }
+         }
+         
+         @keyframes highlightPulse {
+             0%, 100% { background-color: rgba(59, 130, 246, 0.1); }
+             50% { background-color: rgba(59, 130, 246, 0.2); }
+         }
+         
+         @keyframes wavyPulse {
+             0%, 100% { opacity: 1; transform: translateY(-1px); }
+             50% { opacity: 1; transform: translateY(-2px) scale(1.02); }
+         }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .note-tooltip {
+                max-width: 280px;
+                padding: 12px;
+            }
+            
+            .wavy-underline::after {
+                background-size: 15px 2px;
+            }
+        }
+    </style>
+</head>
+<body class="bg-background min-h-screen">
+    <!-- 顶部导航栏 -->
+    <nav class="bg-white shadow-sm border-b border-gray-200 fixed top-0 left-0 right-0 z-30">
+        <div class="px-6 py-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <a href="dashboard.html" class="text-gray-600 hover:text-primary">
+                        <i class="fas fa-arrow-left text-lg"></i>
+                    </a>
+                    <div class="flex items-center">
+                        <i class="fas fa-file-pdf text-red-500 text-lg mr-3"></i>
+                        <div>
+                            <h1 class="text-lg font-semibold text-gray-900">深度学习基础理论研究</h1>
+                            <p class="text-sm text-gray-600">张三 • 45页 • 2.5MB</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <!-- PDF控制工具 -->
+                    <div class="flex items-center space-x-2 bg-gray-100 rounded-lg px-3 py-2">
+                        <button id="prevPage" class="p-1 text-gray-600 hover:text-primary">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <span class="text-sm font-medium">
+                            <input type="number" id="currentPage" value="1" min="1" max="45" 
+                                   class="w-12 text-center border-0 bg-transparent text-sm">
+                            / <span id="totalPages">45</span>
+                        </span>
+                        <button id="nextPage" class="p-1 text-gray-600 hover:text-primary">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- 缩放控制 -->
+                    <div class="flex items-center space-x-2 bg-gray-100 rounded-lg px-3 py-2">
+                        <button id="zoomOut" class="p-1 text-gray-600 hover:text-primary">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                        <span id="zoomLevel" class="text-sm font-medium w-12 text-center">100%</span>
+                        <button id="zoomIn" class="p-1 text-gray-600 hover:text-primary">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- 其他工具 -->
+                    <button id="fullscreen" class="p-2 text-gray-600 hover:text-primary">
+                        <i class="fas fa-expand"></i>
+                    </button>
+                    
+                    <button id="toggleSidebar" class="p-2 text-gray-600 hover:text-primary">
+                        <i class="fas fa-sidebar"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主内容区域 -->
+    <div class="pt-16 flex h-screen">
+        <!-- PDF查看器 -->
+        <div class="flex-1 flex flex-col">
+            <!-- PDF内容区域 -->
+            <div class="flex-1 p-4 overflow-auto">
+                <div class="max-w-4xl mx-auto">
+                    <!-- PDF页面容器 -->
+                    <div id="pdfContainer" class="pdf-viewer rounded-lg shadow-lg bg-white p-8 relative">
+                        <!-- 模拟PDF内容 -->
+                        <div class="space-y-6 text-gray-800 leading-relaxed">
+                            <h1 class="text-2xl font-bold text-center mb-8">深度学习基础理论研究</h1>
+                            
+                            <h2 class="text-xl font-semibold mb-4">摘要</h2>
+                            <p class="mb-4 selectable-text">
+                                深度学习作为机器学习的一个重要分支，近年来在计算机视觉、自然语言处理、语音识别等领域取得了突破性进展。
+                                本文系统地介绍了深度学习的基础理论，包括神经网络的基本结构、反向传播算法、优化方法等核心概念。
+                            </p>
+                            
+                            <h2 class="text-xl font-semibold mb-4">1. 引言</h2>
+                            <p class="mb-4 selectable-text">
+                                人工智能的发展历程中，深度学习无疑是最具革命性的技术之一。从最初的感知机模型到现代的深度神经网络，
+                                这一领域经历了多次起伏。特别是在2006年Hinton等人提出深度信念网络（Deep Belief Networks）之后，
+                                深度学习重新焕发了生机。
+                            </p>
+                            
+                            <h2 class="text-xl font-semibold mb-4">2. 神经网络基础</h2>
+                            <p class="mb-4 selectable-text">
+                                神经网络是深度学习的基础。一个典型的神经网络由输入层、隐藏层和输出层组成。
+                                每个神经元接收来自前一层的输入，通过激活函数进行非线性变换，然后将结果传递给下一层。
+                            </p>
+                            
+                            <h3 class="text-lg font-medium mb-3">2.1 激活函数</h3>
+                            <p class="mb-4 selectable-text">
+                                激活函数是神经网络中的关键组件，它为网络引入了非线性特性。常用的激活函数包括：
+                            </p>
+                            <ul class="list-disc list-inside mb-4 ml-4 selectable-text">
+                                <li>Sigmoid函数：σ(x) = 1/(1+e^(-x))</li>
+                                <li>ReLU函数：f(x) = max(0, x)</li>
+                                <li>Tanh函数：tanh(x) = (e^x - e^(-x))/(e^x + e^(-x))</li>
+                            </ul>
+                            
+                            <h3 class="text-lg font-medium mb-3">2.2 反向传播算法</h3>
+                            <p class="mb-4 selectable-text">
+                                反向传播算法是训练神经网络的核心算法。它通过计算损失函数对网络参数的梯度，
+                                然后使用梯度下降法更新参数。这个过程包括前向传播和反向传播两个阶段。
+                            </p>
+                        </div>
+                        
+                        <!-- 笔记标记点 -->
+                        <div class="note-marker" style="top: 200px; right: 20px;" data-note-id="note1">
+                            <i class="fas fa-sticky-note"></i>
+                        </div>
+                        
+                        <div class="note-marker" style="top: 400px; right: 20px;" data-note-id="note2">
+                            <i class="fas fa-sticky-note"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧面板 -->
+        <div id="sidebarPanel" class="sidebar-panel w-96 bg-white border-l border-gray-200 flex flex-col">
+            <!-- 面板标签 -->
+            <div class="flex border-b border-gray-200">
+                <button id="notesTab" class="flex-1 px-4 py-3 text-sm font-medium text-primary border-b-2 border-primary bg-blue-50">
+                    <i class="fas fa-sticky-note mr-2"></i>笔记
+                </button>
+                <button id="aiTab" class="flex-1 px-4 py-3 text-sm font-medium text-gray-600 hover:text-gray-900">
+                    <i class="fas fa-robot mr-2"></i>AI问答
+                </button>
+            </div>
+
+            <!-- 笔记面板 -->
+            <div id="notesPanel" class="flex-1 flex flex-col">
+                <div class="p-4 border-b border-gray-200">
+                    <button id="addNote" class="w-full bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-medium">
+                        <i class="fas fa-plus mr-2"></i>新建笔记
+                    </button>
+                </div>
+                
+                <div class="flex-1 overflow-auto p-4 space-y-4" id="notesListContainer">
+                    <!-- 笔记列表将通过JavaScript动态生成 -->
+                </div>
+            </div>
+
+            <!-- AI问答面板 -->
+            <div id="aiPanel" class="flex-1 flex-col hidden">
+                <div class="flex-1 overflow-auto p-4 space-y-4">
+                    <!-- AI对话历史 -->
+                    <div class="space-y-4">
+                        <div class="bg-gray-50 rounded-lg p-3">
+                            <div class="flex items-start space-x-2">
+                                <div class="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                                    <i class="fas fa-user text-white text-xs"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="text-sm text-gray-800">什么是反向传播算法？</p>
+                                    <span class="text-xs text-gray-500">刚刚</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-blue-50 rounded-lg p-3">
+                            <div class="flex items-start space-x-2">
+                                <div class="w-6 h-6 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
+                                    <i class="fas fa-robot text-white text-xs"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="text-sm text-gray-800">
+                                        反向传播算法是训练神经网络的核心算法。它通过计算损失函数对网络参数的梯度，
+                                        然后使用梯度下降法更新参数，从而使网络能够学习到输入和输出之间的映射关系。
+                                    </p>
+                                    <span class="text-xs text-gray-500">刚刚</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- AI输入框 -->
+                <div class="p-4 border-t border-gray-200">
+                    <div class="flex space-x-2">
+                        <input type="text" id="aiInput" placeholder="向AI提问..." 
+                               class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm">
+                        <button id="sendAI" class="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 文本选择菜单 -->
+    <div id="textSelectionMenu" class="text-selection-menu">
+        <div class="flex flex-col">
+            <div class="flex">
+                <button id="makeNote" class="px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 border-r border-gray-200">
+                    <i class="fas fa-sticky-note mr-1"></i>做笔记
+                </button>
+                <button id="addWavyLine" class="px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 border-r border-gray-200">
+                    <i class="fas fa-underline mr-1"></i>添加标记
+                </button>
+                <button id="askAI" class="px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 border-r border-gray-200">
+                    <i class="fas fa-robot mr-1"></i>询问AI
+                </button>
+                <button id="copyText" class="px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                    <i class="fas fa-copy mr-1"></i>复制
+                </button>
+            </div>
+            <div id="colorPicker" class="color-picker px-3 py-2 border-t border-gray-200 hidden">
+                <span class="text-xs text-gray-600 mr-2">颜色:</span>
+                <div class="color-option yellow selected" data-color="yellow"></div>
+                <div class="color-option red" data-color="red"></div>
+                <div class="color-option blue" data-color="blue"></div>
+                <div class="color-option green" data-color="green"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 笔记浮层 -->
+    <div id="noteTooltip" class="note-tooltip">
+        <div class="note-tooltip-header">
+            <div class="note-tooltip-title" id="tooltipTitle">笔记标题</div>
+            <div class="note-tooltip-time" id="tooltipTime">2分钟前</div>
+        </div>
+        <div class="note-tooltip-content" id="tooltipContent">
+            这里是笔记的详细内容...
+        </div>
+        <div class="note-tooltip-selected" id="tooltipSelected">
+            "选中的原文内容会显示在这里"
+        </div>
+        <div class="note-tooltip-actions">
+            <button class="note-tooltip-btn primary" id="editNoteBtn">
+                <i class="fas fa-edit mr-1"></i>编辑
+            </button>
+            <button class="note-tooltip-btn" id="deleteNoteBtn">
+                <i class="fas fa-trash mr-1"></i>删除
+            </button>
+            <button class="note-tooltip-btn" id="closeTooltipBtn">
+                <i class="fas fa-times mr-1"></i>关闭
+            </button>
+        </div>
+    </div>
+
+    <!-- 笔记编辑模态框 -->
+    <div id="noteModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900">编辑笔记</h3>
+                </div>
+                
+                <div class="p-6 space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">笔记标题</label>
+                        <input type="text" id="noteTitle" placeholder="输入笔记标题..." 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">选中文本</label>
+                        <div id="selectedText" class="p-3 bg-yellow-50 border border-yellow-200 rounded-md text-sm text-gray-700">
+                            <!-- 选中的文本将显示在这里 -->
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">笔记内容</label>
+                        <textarea id="noteContent" rows="6" placeholder="输入您的笔记内容..." 
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"></textarea>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">标签</label>
+                        <input type="text" id="noteTags" placeholder="输入标签，用逗号分隔..." 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                    </div>
+                </div>
+                
+                <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+                    <button id="cancelNote" class="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50">
+                        取消
+                    </button>
+                    <button id="saveNote" class="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-md">
+                        保存笔记
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI问答模态框 -->
+    <div id="aiModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
+        <div class="flex items-center justify-center min-h-screen p-4">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900">AI问答</h3>
+                </div>
+                
+                <div class="p-6 space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">选中文本</label>
+                        <div id="aiSelectedText" class="p-3 bg-blue-50 border border-blue-200 rounded-md text-sm text-gray-700">
+                            <!-- 选中的文本将显示在这里 -->
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">您的问题</label>
+                        <textarea id="aiQuestion" rows="3" placeholder="请输入您想问AI的问题..." 
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"></textarea>
+                    </div>
+                    
+                    <div id="aiResponse" class="hidden">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">AI回答</label>
+                        <div class="p-4 bg-gray-50 border border-gray-200 rounded-md">
+                            <div id="aiAnswerContent" class="text-sm text-gray-700">
+                                <!-- AI回答将显示在这里 -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+                    <button id="cancelAI" class="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50">
+                        取消
+                    </button>
+                    <button id="askAIBtn" class="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-md">
+                        <i class="fas fa-robot mr-2"></i>询问AI
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let selectedText = '';
+        let selectionRange = null;
+        let currentZoom = 100;
+        let wavyLineCounter = 0;
+        let noteTooltipVisible = false;
+        let selectedColor = 'yellow';
+        
+        // 笔记数据存储
+        let notesData = new Map();
+        let wavyLines = new Map();
+
+        // 页面加载时初始化
+        window.addEventListener('load', function() {
+            // 检查登录状态
+            if (!localStorage.getItem('isLoggedIn')) {
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            initializePDFReader();
+            initializeTextSelection();
+            initializeSidebar();
+            initializeModals();
+            initializeWavyLineSystem();
+            loadExistingNotes();
+        });
+
+        // 初始化波浪线系统
+        function initializeWavyLineSystem() {
+            // 颜色选择器事件
+            document.querySelectorAll('.color-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    document.querySelectorAll('.color-option').forEach(opt => opt.classList.remove('selected'));
+                    this.classList.add('selected');
+                    selectedColor = this.dataset.color;
+                });
+            });
+            
+            // 添加波浪线按钮事件
+            document.getElementById('addWavyLine').addEventListener('click', function() {
+                const colorPicker = document.getElementById('colorPicker');
+                if (colorPicker.classList.contains('hidden')) {
+                    colorPicker.classList.remove('hidden');
+                } else {
+                    addWavyLineToSelection();
+                    hideSelectionMenu();
+                }
+            });
+            
+            // 浮层关闭事件
+            document.getElementById('closeTooltipBtn').addEventListener('click', hideNoteTooltip);
+            document.getElementById('editNoteBtn').addEventListener('click', editNoteFromTooltip);
+            document.getElementById('deleteNoteBtn').addEventListener('click', deleteNoteFromTooltip);
+            
+            // 点击其他地方关闭浮层
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('.note-tooltip') && !e.target.closest('.wavy-underline')) {
+                    hideNoteTooltip();
+                }
+            });
+        }
+
+        // 加载已存在的笔记
+         function loadExistingNotes() {
+             // 模拟已存在的笔记数据
+             const existingNotes = [
+                 {
+                     id: 'note_1',
+                     title: '关于激活函数的理解',
+                     content: 'ReLU函数相比Sigmoid函数有更好的梯度传播特性，能够有效缓解梯度消失问题。',
+                     selectedText: '激活函数是神经网络中的关键组件',
+                     color: 'yellow',
+                     createdAt: new Date(Date.now() - 2 * 60 * 1000),
+                     position: { startOffset: 0, endOffset: 15 }
+                 },
+                 {
+                     id: 'note_2',
+                     title: '反向传播算法要点',
+                     content: '反向传播的核心是链式法则的应用，通过逐层计算梯度来更新网络参数。',
+                     selectedText: '反向传播算法是训练神经网络的核心算法',
+                     color: 'blue',
+                     createdAt: new Date(Date.now() - 5 * 60 * 1000),
+                     position: { startOffset: 0, endOffset: 18 }
+                 }
+             ];
+             
+             // 应用已存在的波浪线标记
+             existingNotes.forEach(note => {
+                 notesData.set(note.id, note);
+                 applyWavyLineToText(note.selectedText, note.color, note.id);
+             });
+             
+             // 更新笔记列表显示
+             updateNotesListDisplay();
+         }
+
+        // 添加波浪线到选中文本
+        function addWavyLineToSelection() {
+            if (!selectedText || selectedText.trim().length === 0) {
+                showToast('请先选择要标记的文本', 'error');
+                return;
+            }
+            
+            const noteId = 'wavy_' + (++wavyLineCounter) + '_' + Date.now();
+            
+            // 创建笔记数据
+            const noteData = {
+                id: noteId,
+                title: '新建笔记',
+                content: '',
+                selectedText: selectedText.trim(),
+                color: selectedColor,
+                createdAt: new Date(),
+                position: getSelectionPosition()
+            };
+            
+            notesData.set(noteId, noteData);
+            
+            // 应用波浪线样式
+            applyWavyLineToText(selectedText.trim(), selectedColor, noteId);
+            
+            // 打开笔记编辑模态框
+            document.getElementById('selectedText').textContent = selectedText.trim();
+            document.getElementById('noteModal').classList.remove('hidden');
+            
+            showToast('已添加波浪线标记');
+        }
+
+        // 应用波浪线到文本
+        function applyWavyLineToText(text, color, noteId) {
+            const pdfContainer = document.getElementById('pdfContainer');
+            const walker = document.createTreeWalker(
+                pdfContainer,
+                NodeFilter.SHOW_TEXT,
+                null,
+                false
+            );
+            
+            let node;
+            while (node = walker.nextNode()) {
+                const nodeText = node.textContent;
+                const index = nodeText.indexOf(text);
+                
+                if (index !== -1) {
+                    const parent = node.parentNode;
+                    const beforeText = nodeText.substring(0, index);
+                    const selectedText = nodeText.substring(index, index + text.length);
+                    const afterText = nodeText.substring(index + text.length);
+                    
+                    // 创建新的节点结构
+                    const fragment = document.createDocumentFragment();
+                    
+                    if (beforeText) {
+                        fragment.appendChild(document.createTextNode(beforeText));
+                    }
+                    
+                    const wavySpan = document.createElement('span');
+                    wavySpan.className = `wavy-underline color-${color}`;
+                    wavySpan.textContent = selectedText;
+                    wavySpan.dataset.noteId = noteId;
+                    wavySpan.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        showNoteTooltip(noteId, e.target);
+                    });
+                    
+                    fragment.appendChild(wavySpan);
+                    
+                    if (afterText) {
+                        fragment.appendChild(document.createTextNode(afterText));
+                    }
+                    
+                    parent.replaceChild(fragment, node);
+                    wavyLines.set(noteId, wavySpan);
+                    break;
+                }
+            }
+        }
+
+        // 显示笔记浮层
+        function showNoteTooltip(noteId, element) {
+            const noteData = notesData.get(noteId);
+            if (!noteData) return;
+            
+            const tooltip = document.getElementById('noteTooltip');
+            const rect = element.getBoundingClientRect();
+            const containerRect = document.getElementById('pdfContainer').getBoundingClientRect();
+            
+            // 更新浮层内容
+            document.getElementById('tooltipTitle').textContent = noteData.title || '无标题笔记';
+            document.getElementById('tooltipContent').textContent = noteData.content || '暂无内容';
+            document.getElementById('tooltipSelected').textContent = `"${noteData.selectedText}"`;
+            document.getElementById('tooltipTime').textContent = formatTime(noteData.createdAt);
+            
+            // 计算浮层位置
+            let top = rect.bottom + window.scrollY + 10;
+            let left = rect.left + window.scrollX;
+            
+            // 检查是否超出视窗
+            const tooltipRect = tooltip.getBoundingClientRect();
+            if (top + 200 > window.innerHeight + window.scrollY) {
+                top = rect.top + window.scrollY - 200;
+                tooltip.classList.add('bottom');
+            } else {
+                tooltip.classList.remove('bottom');
+            }
+            
+            if (left + 320 > window.innerWidth) {
+                left = window.innerWidth - 320 - 20;
+            }
+            
+            tooltip.style.left = left + 'px';
+            tooltip.style.top = top + 'px';
+            tooltip.style.display = 'block';
+            tooltip.dataset.noteId = noteId;
+            
+            noteTooltipVisible = true;
+        }
+
+        // 隐藏笔记浮层
+        function hideNoteTooltip() {
+            const tooltip = document.getElementById('noteTooltip');
+            tooltip.style.display = 'none';
+            noteTooltipVisible = false;
+        }
+
+        // 从浮层编辑笔记
+        function editNoteFromTooltip() {
+            const noteId = document.getElementById('noteTooltip').dataset.noteId;
+            const noteData = notesData.get(noteId);
+            
+            if (noteData) {
+                document.getElementById('noteTitle').value = noteData.title || '';
+                document.getElementById('noteContent').value = noteData.content || '';
+                document.getElementById('selectedText').textContent = noteData.selectedText;
+                document.getElementById('noteModal').classList.remove('hidden');
+                document.getElementById('noteModal').dataset.editingId = noteId;
+                hideNoteTooltip();
+            }
+        }
+
+        // 从浮层删除笔记
+        function deleteNoteFromTooltip() {
+            const noteId = document.getElementById('noteTooltip').dataset.noteId;
+            
+            if (confirm('确定要删除这条笔记吗？')) {
+                deleteWavyLine(noteId);
+                hideNoteTooltip();
+                showToast('笔记已删除');
+            }
+        }
+
+        // 删除波浪线标记
+        function deleteWavyLine(noteId) {
+            const wavyElement = wavyLines.get(noteId);
+            if (wavyElement) {
+                const parent = wavyElement.parentNode;
+                const textNode = document.createTextNode(wavyElement.textContent);
+                parent.replaceChild(textNode, wavyElement);
+                
+                // 合并相邻的文本节点
+                parent.normalize();
+                
+                wavyLines.delete(noteId);
+                notesData.delete(noteId);
+            }
+        }
+
+        // 获取选择位置信息
+        function getSelectionPosition() {
+            const selection = window.getSelection();
+            if (selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                return {
+                    startOffset: range.startOffset,
+                    endOffset: range.endOffset,
+                    startContainer: range.startContainer,
+                    endContainer: range.endContainer
+                };
+            }
+            return null;
+        }
+
+        // 格式化时间
+         function formatTime(date) {
+             const now = new Date();
+             const diff = now - date;
+             const minutes = Math.floor(diff / 60000);
+             
+             if (minutes < 1) return '刚刚';
+             if (minutes < 60) return `${minutes}分钟前`;
+             
+             const hours = Math.floor(minutes / 60);
+             if (hours < 24) return `${hours}小时前`;
+             
+             const days = Math.floor(hours / 24);
+             return `${days}天前`;
+         }
+
+         // 更新笔记列表显示
+         function updateNotesListDisplay() {
+             const container = document.getElementById('notesListContainer');
+             container.innerHTML = '';
+             
+             if (notesData.size === 0) {
+                 container.innerHTML = `
+                     <div class="text-center py-8 text-gray-500">
+                         <i class="fas fa-sticky-note text-3xl mb-2"></i>
+                         <p class="text-sm">暂无笔记</p>
+                         <p class="text-xs">选择文本并添加标记来创建笔记</p>
+                     </div>
+                 `;
+                 return;
+             }
+             
+             // 按创建时间排序
+             const sortedNotes = Array.from(notesData.values()).sort((a, b) => b.createdAt - a.createdAt);
+             
+             sortedNotes.forEach(note => {
+                 const noteElement = createNoteListItem(note);
+                 container.appendChild(noteElement);
+             });
+         }
+
+         // 创建笔记列表项
+         function createNoteListItem(note) {
+             const div = document.createElement('div');
+             div.className = `bg-${note.color === 'yellow' ? 'yellow' : note.color === 'red' ? 'red' : note.color === 'blue' ? 'blue' : 'green'}-50 border border-${note.color === 'yellow' ? 'yellow' : note.color === 'red' ? 'red' : note.color === 'blue' ? 'blue' : 'green'}-200 rounded-lg p-3 cursor-pointer hover:shadow-md transition-all duration-200`;
+             div.dataset.noteId = note.id;
+             
+             div.innerHTML = `
+                 <div class="flex items-start justify-between mb-2">
+                     <h4 class="font-medium text-gray-900 text-sm">${note.title || '无标题笔记'}</h4>
+                     <div class="flex items-center space-x-1">
+                         <button class="text-gray-400 hover:text-gray-600 locate-note-btn" data-note-id="${note.id}" title="定位到原文">
+                             <i class="fas fa-crosshairs text-xs"></i>
+                         </button>
+                         <button class="text-gray-400 hover:text-gray-600 edit-note-btn" data-note-id="${note.id}" title="编辑笔记">
+                             <i class="fas fa-edit text-xs"></i>
+                         </button>
+                         <button class="text-gray-400 hover:text-gray-600 delete-note-btn" data-note-id="${note.id}" title="删除笔记">
+                             <i class="fas fa-trash text-xs"></i>
+                         </button>
+                     </div>
+                 </div>
+                 <p class="text-sm text-gray-700 mb-2 line-clamp-2">
+                     ${note.content || '暂无内容'}
+                 </p>
+                 <div class="text-xs text-gray-600 mb-2 italic">
+                     "${note.selectedText.substring(0, 50)}${note.selectedText.length > 50 ? '...' : ''}"
+                 </div>
+                 <div class="flex items-center justify-between text-xs text-gray-500">
+                     <span class="flex items-center">
+                         <div class="w-2 h-2 rounded-full bg-${note.color === 'yellow' ? 'yellow' : note.color === 'red' ? 'red' : note.color === 'blue' ? 'blue' : 'green'}-400 mr-1"></div>
+                         第1页
+                     </span>
+                     <span>${formatTime(note.createdAt)}</span>
+                 </div>
+             `;
+             
+             // 添加事件监听器
+             div.addEventListener('click', function(e) {
+                 if (!e.target.closest('button')) {
+                     // 点击笔记项，高亮对应的波浪线
+                     highlightWavyLine(note.id);
+                 }
+             });
+             
+             // 定位按钮
+             div.querySelector('.locate-note-btn').addEventListener('click', function(e) {
+                 e.stopPropagation();
+                 locateToWavyLine(note.id);
+             });
+             
+             // 编辑按钮
+             div.querySelector('.edit-note-btn').addEventListener('click', function(e) {
+                 e.stopPropagation();
+                 editNoteFromList(note.id);
+             });
+             
+             // 删除按钮
+             div.querySelector('.delete-note-btn').addEventListener('click', function(e) {
+                 e.stopPropagation();
+                 deleteNoteFromList(note.id);
+             });
+             
+             return div;
+         }
+
+         // 高亮波浪线
+         function highlightWavyLine(noteId) {
+             // 清除之前的高亮
+             document.querySelectorAll('.wavy-underline.highlighted').forEach(el => {
+                 el.classList.remove('highlighted');
+             });
+             
+             const wavyElement = wavyLines.get(noteId);
+             if (wavyElement) {
+                 wavyElement.classList.add('highlighted');
+                 
+                 // 滚动到波浪线位置
+                 wavyElement.scrollIntoView({ 
+                     behavior: 'smooth', 
+                     block: 'center' 
+                 });
+                 
+                 // 3秒后移除高亮
+                 setTimeout(() => {
+                     wavyElement.classList.remove('highlighted');
+                 }, 3000);
+             }
+         }
+
+         // 定位到波浪线
+         function locateToWavyLine(noteId) {
+             const wavyElement = wavyLines.get(noteId);
+             if (wavyElement) {
+                 // 滚动到位置
+                 wavyElement.scrollIntoView({ 
+                     behavior: 'smooth', 
+                     block: 'center' 
+                 });
+                 
+                 // 显示笔记浮层
+                 setTimeout(() => {
+                     showNoteTooltip(noteId, wavyElement);
+                 }, 500);
+             }
+         }
+
+         // 从列表编辑笔记
+         function editNoteFromList(noteId) {
+             const noteData = notesData.get(noteId);
+             if (noteData) {
+                 document.getElementById('noteTitle').value = noteData.title || '';
+                 document.getElementById('noteContent').value = noteData.content || '';
+                 document.getElementById('selectedText').textContent = noteData.selectedText;
+                 document.getElementById('noteModal').classList.remove('hidden');
+                 document.getElementById('noteModal').dataset.editingId = noteId;
+             }
+         }
+
+         // 从列表删除笔记
+         function deleteNoteFromList(noteId) {
+             if (confirm('确定要删除这条笔记吗？')) {
+                 deleteWavyLine(noteId);
+                 updateNotesListDisplay();
+                 showToast('笔记已删除');
+             }
+         }
+
+        // 初始化PDF阅读器
+        function initializePDFReader() {
+            let currentPage = 1;
+            let totalPages = 45;
+            let zoomLevel = 100;
+            
+            // 页面导航
+            document.getElementById('prevPage').addEventListener('click', function() {
+                if (currentPage > 1) {
+                    currentPage--;
+                    updatePage();
+                }
+            });
+            
+            document.getElementById('nextPage').addEventListener('click', function() {
+                if (currentPage < totalPages) {
+                    currentPage++;
+                    updatePage();
+                }
+            });
+            
+            document.getElementById('currentPage').addEventListener('change', function() {
+                const page = parseInt(this.value);
+                if (page >= 1 && page <= totalPages) {
+                    currentPage = page;
+                    updatePage();
+                }
+            });
+            
+            // 缩放控制
+            document.getElementById('zoomIn').addEventListener('click', function() {
+                if (zoomLevel < 200) {
+                    zoomLevel += 25;
+                    updateZoom();
+                }
+            });
+            
+            document.getElementById('zoomOut').addEventListener('click', function() {
+                if (zoomLevel > 50) {
+                    zoomLevel -= 25;
+                    updateZoom();
+                }
+            });
+            
+            // 全屏切换
+            document.getElementById('fullscreen').addEventListener('click', function() {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen();
+                } else {
+                    document.exitFullscreen();
+                }
+            });
+            
+            // 侧边栏切换
+            document.getElementById('toggleSidebar').addEventListener('click', function() {
+                const sidebar = document.getElementById('sidebarPanel');
+                sidebar.classList.toggle('collapsed');
+            });
+            
+            function updatePage() {
+                document.getElementById('currentPage').value = currentPage;
+                console.log('切换到第', currentPage, '页');
+            }
+            
+            function updateZoom() {
+                currentZoom = zoomLevel;
+                document.getElementById('zoomLevel').textContent = zoomLevel + '%';
+                const container = document.getElementById('pdfContainer');
+                container.style.transform = `scale(${zoomLevel / 100})`;
+                container.style.transformOrigin = 'top center';
+                
+                // 更新波浪线位置
+                updateWavyLinesPosition();
+                console.log('缩放到', zoomLevel, '%');
+            }
+        }
+
+        // 更新波浪线位置（缩放时）
+        function updateWavyLinesPosition() {
+            wavyLines.forEach((element, noteId) => {
+                // 波浪线会随着容器缩放自动调整，无需额外处理
+                // 但如果需要调整浮层位置，可以在这里处理
+            });
+        }
+
+        // 初始化文本选择功能
+        function initializeTextSelection() {
+            // 监听文本选择
+            document.addEventListener('mouseup', function(e) {
+                // 如果点击的是波浪线，不处理选择
+                if (e.target.classList.contains('wavy-underline')) {
+                    return;
+                }
+                
+                const selection = window.getSelection();
+                if (selection.toString().length > 0) {
+                    selectedText = selection.toString();
+                    selectionRange = selection.getRangeAt(0);
+                    showSelectionMenu(e.pageX, e.pageY);
+                } else {
+                    hideSelectionMenu();
+                }
+            });
+            
+            // 显示选择菜单
+            function showSelectionMenu(x, y) {
+                const menu = document.getElementById('textSelectionMenu');
+                const colorPicker = document.getElementById('colorPicker');
+                
+                // 重置颜色选择器
+                colorPicker.classList.add('hidden');
+                
+                menu.style.left = x + 'px';
+                menu.style.top = y + 'px';
+                menu.style.display = 'block';
+            }
+            
+            // 隐藏选择菜单
+            function hideSelectionMenu() {
+                const menu = document.getElementById('textSelectionMenu');
+                const colorPicker = document.getElementById('colorPicker');
+                menu.style.display = 'none';
+                colorPicker.classList.add('hidden');
+            }
+            
+            // 做笔记
+            document.getElementById('makeNote').addEventListener('click', function() {
+                document.getElementById('selectedText').textContent = selectedText;
+                document.getElementById('noteModal').classList.remove('hidden');
+                hideSelectionMenu();
+            });
+            
+            // 询问AI
+            document.getElementById('askAI').addEventListener('click', function() {
+                document.getElementById('aiSelectedText').textContent = selectedText;
+                document.getElementById('aiModal').classList.remove('hidden');
+                hideSelectionMenu();
+            });
+            
+            // 复制文本
+            document.getElementById('copyText').addEventListener('click', function() {
+                navigator.clipboard.writeText(selectedText).then(function() {
+                    showToast('文本已复制到剪贴板');
+                });
+                hideSelectionMenu();
+            });
+        }
+
+        // 初始化侧边栏
+        function initializeSidebar() {
+            // 标签切换
+            document.getElementById('notesTab').addEventListener('click', function() {
+                switchTab('notes');
+            });
+            
+            document.getElementById('aiTab').addEventListener('click', function() {
+                switchTab('ai');
+            });
+            
+            function switchTab(tab) {
+                // 更新标签样式
+                document.querySelectorAll('#sidebarPanel button').forEach(btn => {
+                    btn.classList.remove('text-primary', 'border-b-2', 'border-primary', 'bg-blue-50');
+                    btn.classList.add('text-gray-600');
+                });
+                
+                if (tab === 'notes') {
+                    document.getElementById('notesTab').classList.add('text-primary', 'border-b-2', 'border-primary', 'bg-blue-50');
+                    document.getElementById('notesTab').classList.remove('text-gray-600');
+                    document.getElementById('notesPanel').classList.remove('hidden');
+                    document.getElementById('aiPanel').classList.add('hidden');
+                } else {
+                    document.getElementById('aiTab').classList.add('text-primary', 'border-b-2', 'border-primary', 'bg-blue-50');
+                    document.getElementById('aiTab').classList.remove('text-gray-600');
+                    document.getElementById('aiPanel').classList.remove('hidden');
+                    document.getElementById('notesPanel').classList.add('hidden');
+                }
+            }
+            
+            // AI输入
+            document.getElementById('sendAI').addEventListener('click', function() {
+                const input = document.getElementById('aiInput');
+                const question = input.value.trim();
+                if (question) {
+                    sendAIQuestion(question);
+                    input.value = '';
+                }
+            });
+            
+            document.getElementById('aiInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    document.getElementById('sendAI').click();
+                }
+            });
+        }
+
+        // 初始化模态框
+        function initializeModals() {
+            // 笔记模态框
+            document.getElementById('cancelNote').addEventListener('click', function() {
+                document.getElementById('noteModal').classList.add('hidden');
+                document.getElementById('noteModal').removeAttribute('data-editing-id');
+            });
+            
+            document.getElementById('saveNote').addEventListener('click', function() {
+                saveNote();
+            });
+            
+            // AI模态框
+            document.getElementById('cancelAI').addEventListener('click', function() {
+                document.getElementById('aiModal').classList.add('hidden');
+            });
+            
+            document.getElementById('askAIBtn').addEventListener('click', function() {
+                const question = document.getElementById('aiQuestion').value.trim();
+                if (question) {
+                    askAIQuestion(question);
+                }
+            });
+        }
+
+        // 保存笔记
+         function saveNote() {
+             const title = document.getElementById('noteTitle').value;
+             const content = document.getElementById('noteContent').value;
+             const tags = document.getElementById('noteTags').value;
+             const editingId = document.getElementById('noteModal').dataset.editingId;
+             
+             if (!title || !content) {
+                 showToast('请填写笔记标题和内容', 'error');
+                 return;
+             }
+             
+             if (editingId) {
+                 // 编辑现有笔记
+                 const noteData = notesData.get(editingId);
+                 if (noteData) {
+                     noteData.title = title;
+                     noteData.content = content;
+                     noteData.tags = tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+                     noteData.updatedAt = new Date();
+                 }
+                 showToast('笔记已更新');
+             } else {
+                 // 创建新笔记
+                 const noteId = 'note_' + Date.now();
+                 const noteData = {
+                     id: noteId,
+                     title: title,
+                     content: content,
+                     tags: tags.split(',').map(tag => tag.trim()).filter(tag => tag),
+                     selectedText: document.getElementById('selectedText').textContent,
+                     createdAt: new Date()
+                 };
+                 
+                 notesData.set(noteId, noteData);
+                 showToast('笔记已保存');
+             }
+             
+             // 更新笔记列表显示
+             updateNotesListDisplay();
+             
+             // 清空表单并关闭模态框
+             document.getElementById('noteTitle').value = '';
+             document.getElementById('noteContent').value = '';
+             document.getElementById('noteTags').value = '';
+             document.getElementById('noteModal').classList.add('hidden');
+             document.getElementById('noteModal').removeAttribute('data-editing-id');
+         }
+
+        // AI问答
+        function askAIQuestion(question) {
+            const selectedText = document.getElementById('aiSelectedText').textContent;
+            
+            // 显示加载状态
+            document.getElementById('aiResponse').classList.remove('hidden');
+            document.getElementById('aiAnswerContent').innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>AI正在思考...';
+            
+            // 模拟AI回答
+            setTimeout(() => {
+                const answer = generateAIAnswer(question, selectedText);
+                document.getElementById('aiAnswerContent').textContent = answer;
+            }, 2000);
+        }
+
+        // 发送AI问题（侧边栏）
+        function sendAIQuestion(question) {
+            // 添加用户问题到对话历史
+            addChatMessage('user', question);
+            
+            // 模拟AI回答
+            setTimeout(() => {
+                const answer = generateAIAnswer(question);
+                addChatMessage('ai', answer);
+            }, 1500);
+        }
+
+        // 添加聊天消息
+        function addChatMessage(type, message) {
+            const chatContainer = document.querySelector('#aiPanel .space-y-4');
+            const messageDiv = document.createElement('div');
+            
+            if (type === 'user') {
+                messageDiv.innerHTML = `
+                    <div class="bg-gray-50 rounded-lg p-3">
+                        <div class="flex items-start space-x-2">
+                            <div class="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-user text-white text-xs"></i>
+                            </div>
+                            <div class="flex-1">
+                                <p class="text-sm text-gray-800">${message}</p>
+                                <span class="text-xs text-gray-500">刚刚</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                messageDiv.innerHTML = `
+                    <div class="bg-blue-50 rounded-lg p-3">
+                        <div class="flex items-start space-x-2">
+                            <div class="w-6 h-6 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
+                                <i class="fas fa-robot text-white text-xs"></i>
+                            </div>
+                            <div class="flex-1">
+                                <p class="text-sm text-gray-800">${message}</p>
+                                <span class="text-xs text-gray-500">刚刚</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // 生成AI回答（模拟）
+        function generateAIAnswer(question, context = '') {
+            const answers = [
+                '根据文档内容，这个概念涉及到深度学习的核心原理。简单来说，它是通过多层神经网络来学习数据的复杂模式。',
+                '这是一个很好的问题。从技术角度来看，这个方法的优势在于能够自动提取特征，减少了人工特征工程的工作量。',
+                '基于您选中的文本，我可以解释一下：这个算法的关键在于反向传播机制，它能够有效地计算梯度并更新网络参数。',
+                '这个概念在实际应用中非常重要。它不仅提高了模型的准确性，还增强了模型的泛化能力。'
+            ];
+            
+            return answers[Math.floor(Math.random() * answers.length)];
+        }
+
+        // 显示提示消息
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `fixed top-20 right-4 px-4 py-2 rounded-md text-white z-50 ${
+                type === 'success' ? 'bg-green-500' : 'bg-red-500'
+            }`;
+            toast.textContent = message;
+            
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+# 文件存储配置
+app:
+  file:
+    storage:
+      # 文件存储根目录
+      root-path: D:\\project\\scholorAssist\\scholorAssist
+      # 文档存储子目录
+      document-path: uploads\\documents
+      # 缩略图存储子目录
+      thumbnail-path: thumbnails
+      # 最大文件大小（字节）- 50MB
+      max-file-size: ${FILE_MAX_SIZE:52428800}
+      # 允许的文件类型
+      allowed-types:
+        - application/pdf
+      # 文件访问URL前缀
+      url-prefix: ${FILE_URL_PREFIX:/api/files}
+      # 静态资源映射的前缀（默认 /files/），与 WebConfig 一致
+      static-prefix: ${FILE_STATIC_PREFIX:/files/}
+      # 静态资源完整基准URL（可选），例如 https://your-domain.com/files/
+      static-base-url: ${FILE_STATIC_BASE_URL:}
+
+# 雪花算法配置
+snowflake:
+  # 机器ID（0-31）
+  machine-id: ${SNOWFLAKE_MACHINE_ID:1}
+  # 数据中心ID（0-31）
+  datacenter-id: ${SNOWFLAKE_DATACENTER_ID:1}

@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zd.scuserservice.mapper.UserMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.zd.scuserservice.model.domain.User">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="user_id" property="userId" jdbcType="VARCHAR"/>
+        <result column="username" property="username" jdbcType="VARCHAR"/>
+        <result column="email" property="email" jdbcType="VARCHAR"/>
+        <result column="password_hash" property="passwordHash" jdbcType="VARCHAR"/>
+        <result column="real_name" property="realName" jdbcType="VARCHAR"/>
+        <result column="role" property="role" jdbcType="VARCHAR"/>
+        <result column="status" property="status" jdbcType="VARCHAR"/>
+        <result column="avatar_url" property="avatarUrl" jdbcType="VARCHAR"/>
+        <result column="last_login_at" property="lastLoginAt" jdbcType="TIMESTAMP"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
+        <result column="updated_at" property="updatedAt" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <!-- 基础字段 -->
+    <sql id="Base_Column_List">
+        id, user_id, username, email, password_hash, real_name, role, status, 
+        avatar_url, last_login_at, created_at, updated_at
+    </sql>
+
+    <!-- 根据用户ID查询用户信息 -->
+    <select id="selectByUserId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM users
+        WHERE user_id = #{userId}
+    </select>
+
+    <!-- 根据用户名查询用户信息 -->
+    <select id="selectByUsername" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM users
+        WHERE username = #{username}
+    </select>
+
+    <!-- 根据邮箱查询用户信息 -->
+    <select id="selectByEmail" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM users
+        WHERE email = #{email}
+    </select>
+
+    <!-- 根据用户名或邮箱查询用户信息（用于登录） -->
+    <select id="selectByUsernameOrEmail" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM users
+        WHERE username = #{login} OR email = #{login}
+    </select>
+
+    <!-- 检查用户名是否存在 -->
+    <select id="countByUsername" resultType="long">
+        SELECT COUNT(1)
+        FROM users
+        WHERE username = #{username}
+    </select>
+
+    <!-- 检查邮箱是否存在 -->
+    <select id="countByEmail" resultType="long">
+        SELECT COUNT(1)
+        FROM users
+        WHERE email = #{email}
+    </select>
+
+    <!-- 更新用户最后登录时间 -->
+    <update id="updateLastLoginTime">
+        UPDATE users
+        SET last_login_at = #{lastLoginAt}, updated_at = CURRENT_TIMESTAMP
+        WHERE user_id = #{userId}
+    </update>
+
+    <!-- 更新用户密码 -->
+    <update id="updatePassword">
+        UPDATE users
+        SET password_hash = #{passwordHash}, updated_at = CURRENT_TIMESTAMP
+        WHERE user_id = #{userId}
+    </update>
+
+    <!-- 更新用户状态 -->
+    <update id="updateStatus">
+        UPDATE users
+        SET status = #{status}, updated_at = CURRENT_TIMESTAMP
+        WHERE user_id = #{userId}
+    </update>
+
+    <!-- 根据角色查询用户列表 -->
+    <select id="selectByRole" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM users
+        WHERE role = #{role}
+        ORDER BY created_at DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <!-- 根据状态查询用户列表 -->
+    <select id="selectByStatus" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM users
+        WHERE status = #{status}
+        ORDER BY created_at DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <!-- 搜索用户（支持用户名、邮箱、真实姓名模糊查询） -->
+    <select id="searchUsers" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM users
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND (
+                    username ILIKE CONCAT('%', #{keyword}, '%')
+                    OR email ILIKE CONCAT('%', #{keyword}, '%')
+                    OR real_name ILIKE CONCAT('%', #{keyword}, '%')
+                )
+            </if>
+            <if test="role != null and role != ''">
+                AND role = #{role}
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+        </where>
+        <choose>
+            <when test="sortBy == 'username'">
+                ORDER BY username 
+                <if test="sortOrder == 'asc'">ASC</if>
+                <if test="sortOrder != 'asc'">DESC</if>
+            </when>
+            <when test="sortBy == 'last_login_at'">
+                ORDER BY last_login_at 
+                <if test="sortOrder == 'asc'">ASC</if>
+                <if test="sortOrder != 'asc'">DESC</if>
+            </when>
+            <otherwise>
+                ORDER BY created_at 
+                <if test="sortOrder == 'asc'">ASC</if>
+                <if test="sortOrder != 'asc'">DESC</if>
+            </otherwise>
+        </choose>
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <!-- 统计用户总数 -->
+    <select id="countUsers" resultType="long">
+        SELECT COUNT(1)
+        FROM users
+    </select>
+
+    <!-- 根据角色统计用户数量 -->
+    <select id="countByRole" resultType="long">
+        SELECT COUNT(1)
+        FROM users
+        WHERE role = #{role}
+    </select>
+
+    <!-- 根据状态统计用户数量 -->
+    <select id="countByStatus" resultType="long">
+        SELECT COUNT(1)
+        FROM users
+        WHERE status = #{status}
+    </select>
+
+    <!-- 搜索用户数量统计 -->
+    <select id="countSearchUsers" resultType="long">
+        SELECT COUNT(1)
+        FROM users
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND (
+                    username ILIKE CONCAT('%', #{keyword}, '%')
+                    OR email ILIKE CONCAT('%', #{keyword}, '%')
+                    OR real_name ILIKE CONCAT('%', #{keyword}, '%')
+                )
+            </if>
+            <if test="role != null and role != ''">
+                AND role = #{role}
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+        </where>
+    </select>
+
+</mapper>

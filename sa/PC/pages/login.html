@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文献辅助阅读系统 - 登录</title>
+    <!-- 功能要点：账号密码登录表单，支持记住密码；注册新账号和忘记密码链接；响应式设计适配不同屏幕尺寸 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1763EA',
+                        'primary-dark': '#1451C7',
+                        background: '#F8FAFF'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-md">
+        <!-- Logo和标题 -->
+        <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-full mb-4">
+                <i class="fas fa-book-open text-white text-2xl"></i>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-900 mb-2">文献辅助阅读系统</h1>
+            <p class="text-gray-600">智能PDF阅读与AI问答平台</p>
+        </div>
+
+        <!-- 登录表单 -->
+        <div class="bg-white rounded-lg shadow-lg p-8">
+            <form id="loginForm" class="space-y-6">
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-envelope mr-2"></i>邮箱地址
+                    </label>
+                    <input type="email" id="email" name="email" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                           placeholder="请输入邮箱地址">
+                </div>
+
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-lock mr-2"></i>密码
+                    </label>
+                    <div class="relative">
+                        <input type="password" id="password" name="password" required
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent pr-10"
+                               placeholder="请输入密码">
+                        <button type="button" id="togglePassword" 
+                                class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <input type="checkbox" id="remember" name="remember"
+                               class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                        <label for="remember" class="ml-2 block text-sm text-gray-700">
+                            记住密码
+                        </label>
+                    </div>
+                    <a href="#" class="text-sm text-primary hover:text-primary-dark" onclick="showForgotPassword()">
+                        忘记密码？
+                    </a>
+                </div>
+
+                <button type="submit" 
+                        class="w-full bg-primary hover:bg-primary-dark text-white font-medium py-2 px-4 rounded-md transition duration-200 flex items-center justify-center">
+                    <i class="fas fa-sign-in-alt mr-2"></i>
+                    登录
+                </button>
+            </form>
+
+            <div class="mt-6 text-center">
+                <p class="text-sm text-gray-600">
+                    还没有账号？
+                    <a href="#" class="text-primary hover:text-primary-dark font-medium" onclick="showRegister()">
+                        立即注册
+                    </a>
+                </p>
+            </div>
+        </div>
+
+        <!-- 注册表单（隐藏） -->
+        <div id="registerForm" class="bg-white rounded-lg shadow-lg p-8 hidden">
+            <div class="flex items-center mb-6">
+                <button onclick="showLogin()" class="text-gray-400 hover:text-gray-600 mr-3">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <h2 class="text-xl font-bold text-gray-900">创建新账号</h2>
+            </div>
+            
+            <form class="space-y-6">
+                <div>
+                    <label for="regName" class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-user mr-2"></i>用户名
+                    </label>
+                    <input type="text" id="regName" name="name" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                           placeholder="请输入用户名">
+                </div>
+
+                <div>
+                    <label for="regEmail" class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-envelope mr-2"></i>邮箱地址
+                    </label>
+                    <input type="email" id="regEmail" name="email" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                           placeholder="请输入邮箱地址">
+                </div>
+
+                <div>
+                    <label for="regPassword" class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-lock mr-2"></i>密码
+                    </label>
+                    <input type="password" id="regPassword" name="password" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                           placeholder="请输入密码（至少8位）">
+                </div>
+
+                <div>
+                    <label for="confirmPassword" class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-lock mr-2"></i>确认密码
+                    </label>
+                    <input type="password" id="confirmPassword" name="confirmPassword" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                           placeholder="请再次输入密码">
+                </div>
+
+                <button type="submit" 
+                        class="w-full bg-primary hover:bg-primary-dark text-white font-medium py-2 px-4 rounded-md transition duration-200">
+                    <i class="fas fa-user-plus mr-2"></i>
+                    注册账号
+                </button>
+            </form>
+        </div>
+
+        <!-- 忘记密码表单（隐藏） -->
+        <div id="forgotForm" class="bg-white rounded-lg shadow-lg p-8 hidden">
+            <div class="flex items-center mb-6">
+                <button onclick="showLogin()" class="text-gray-400 hover:text-gray-600 mr-3">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <h2 class="text-xl font-bold text-gray-900">重置密码</h2>
+            </div>
+            
+            <form class="space-y-6">
+                <div>
+                    <label for="resetEmail" class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-envelope mr-2"></i>邮箱地址
+                    </label>
+                    <input type="email" id="resetEmail" name="email" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                           placeholder="请输入注册邮箱">
+                    <p class="mt-2 text-sm text-gray-500">我们将向您的邮箱发送重置密码链接</p>
+                </div>
+
+                <button type="submit" 
+                        class="w-full bg-primary hover:bg-primary-dark text-white font-medium py-2 px-4 rounded-md transition duration-200">
+                    <i class="fas fa-paper-plane mr-2"></i>
+                    发送重置链接
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // 表单切换功能
+        function showLogin() {
+            document.getElementById('loginForm').parentElement.classList.remove('hidden');
+            document.getElementById('registerForm').classList.add('hidden');
+            document.getElementById('forgotForm').classList.add('hidden');
+        }
+
+        function showRegister() {
+            document.getElementById('loginForm').parentElement.classList.add('hidden');
+            document.getElementById('registerForm').classList.remove('hidden');
+            document.getElementById('forgotForm').classList.add('hidden');
+        }
+
+        function showForgotPassword() {
+            document.getElementById('loginForm').parentElement.classList.add('hidden');
+            document.getElementById('registerForm').classList.add('hidden');
+            document.getElementById('forgotForm').classList.remove('hidden');
+        }
+
+        // 密码显示/隐藏切换
+        document.getElementById('togglePassword').addEventListener('click', function() {
+            const password = document.getElementById('password');
+            const icon = this.querySelector('i');
+            
+            if (password.type === 'password') {
+                password.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                password.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        });
+
+        // 登录表单提交
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const remember = document.getElementById('remember').checked;
+            
+            // 模拟登录验证
+            if (email && password) {
+                // 保存登录状态到localStorage
+                localStorage.setItem('isLoggedIn', 'true');
+                localStorage.setItem('userEmail', email);
+                if (remember) {
+                    localStorage.setItem('rememberLogin', 'true');
+                }
+                
+                // 跳转到仪表盘
+                window.location.href = 'dashboard.html';
+            }
+        });
+
+        // 页面加载时检查记住密码
+        window.addEventListener('load', function() {
+            if (localStorage.getItem('rememberLogin') === 'true') {
+                const email = localStorage.getItem('userEmail');
+                if (email) {
+                    document.getElementById('email').value = email;
+                    document.getElementById('remember').checked = true;
+                }
+            }
+        });
+    </script>
+</body>
+</html>

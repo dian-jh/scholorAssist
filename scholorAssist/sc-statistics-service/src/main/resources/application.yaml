@@ -1,0 +1,23 @@
+server:
+  port: 10120
+
+spring:
+  application:
+    name: sc-statistics-service
+  profiles:
+    active: dev
+  config:
+    import:
+      - nacos:sc-statistics.yaml?group=DEFAULT_GROUP
+      - nacos:mybatis-plus.yaml?group=DEFAULT_GROUP
+      - nacos:pgsql.yaml?group=DEFAULT_GROUP
+  #    spring.config.import[1]=nacos:{dataId1}?group={group1}
+  cloud:
+    nacos:
+      config:
+        server-addr: 127.0.0.1:8848
+        namespace: ede3834d-0b93-4b3b-960d-0f656975cc1d
+      #          nacos服务注册
+      discovery:
+        server-addr: 127.0.0.1:8848
+        namespace: ede3834d-0b93-4b3b-960d-0f656975cc1d

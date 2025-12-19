@@ -1,0 +1,165 @@
+server:
+  port: 10100
+
+spring:
+  application:
+    name: sc-gateway
+  profiles:
+    active: dev
+  config:
+    import:
+      - nacos:sc-gateway.yaml?group=DEFAULT_GROUP
+  #    spring.config.import[1]=nacos:{dataId1}?group={group1}
+  cloud:
+    nacos:
+      config:
+        #        这个命名空间在这里要显示指定，我在这里浪费了好多时间 :(
+        namespace: ede3834d-0b93-4b3b-960d-0f656975cc1d
+        server-addr: 127.0.0.1:8848
+      #          nacos服务注册
+      discovery:
+        server-addr: 127.0.0.1:8848
+        namespace: ede3834d-0b93-4b3b-960d-0f656975cc1d
+
+
+    gateway:
+      routes:
+        #        用户服务
+        - id: sc-user-service
+          uri: lb://sc-user-service # lb 表示使用注册中心的负载均衡（LoadBalancer）
+          predicates:
+            - Path=/api/users/**
+          filters:
+            - StripPrefix=0
+            - name: GatewayJwtAuthenticationFilter
+        #        文献管理服务
+        - id: sc-literature-manage
+          uri: lb://sc-literature-manage
+          predicates:
+            - Path=/api/documents/**
+          filters:
+            - StripPrefix=0
+            - name: GatewayJwtAuthenticationFilter
+        # 文献文件接口（下载与字节流）
+        - id: sc-literature-files
+          uri: lb://sc-literature-manage
+          predicates:
+            - Path=/api/files/**
+          filters:
+            - StripPrefix=0
+            - name: GatewayJwtAuthenticationFilter
+            # 暴露下载相关响应头供前端读取，并补充兼容性头
+            - SetResponseHeader=Access-Control-Expose-Headers, Content-Disposition,Content-Length,Accept-Ranges
+            - SetResponseHeader=Accept-Ranges, bytes
+        #        笔记服务
+        - id: sc-note-service
+          uri: lb://sc-note-service
+          predicates:
+            - Path=/api/notes/**
+          filters:
+            - StripPrefix=0
+            - name: GatewayJwtAuthenticationFilter
+        #        分类管理服务
+        - id: sc-categories-manage
+          uri: lb://sc-categories-manage
+          predicates:
+            - Path=/api/categories/**
+          filters:
+            - StripPrefix=0
+            - name: GatewayJwtAuthenticationFilter
+        #        统计服务
+        - id: sc-statistics-service
+          uri: lb://sc-statistics-service
+          predicates:
+            - Path=/api/statistics/**
+          filters:
+            - StripPrefix=0
+            - name: GatewayJwtAuthenticationFilter
+        #        AI服务
+        - id: sc-ai-service
+          uri: lb://sc-ai-service
+          predicates:
+            - Path=/api/ai/**
+          filters:
+            - StripPrefix=0
+            - name: GatewayJwtAuthenticationFilter
+
+      # --- [修改点 1] ---
+      # 添加标准的 Spring Cloud Gateway 全局CORS配置
+      globalcors:
+        cors-configurations:
+          '[/**]': # 应用于所有路径
+            allowedOrigins:
+              - "http://localhost:3000" # 您的前端地址
+              - "http://localhost:5173" # Vite 默认端口
+              - "http://localhost:8080"
+              - "http://localhost:11090" # 本项目前端开发端口
+              - "https://scholar-assist.com"
+            allowedMethods:
+              - "GET"
+              - "POST"
+              - "PUT"
+              - "DELETE"
+              - "OPTIONS"
+            allowedHeaders:
+              - "Authorization"
+              - "Content-Type"
+              - "Accept"
+              - "Origin"
+              - "X-Requested-With"
+              - "X-User-Id"
+              - "X-Username"
+              - "X-User-Role"
+            allowCredentials: true
+            maxAge: 3600
+      # --- [修改点 1 结束] ---
+
+# JWT配置
+jwt:
+  secret: ${JWT_SECRET:mySecretKey123456789012345678901234567890}
+  default-expiration: ${JWT_DEFAULT_EXPIRATION:86400} # 24小时
+  remember-me-expiration: ${JWT_REMEMBER_ME_EXPIRATION:604800} # 7天
+  enabled: ${JWT_ENABLED:true}
+  debug: ${JWT_DEBUG:true}
+  excluded-paths:
+    - /api/users/register
+    - /api/users/login
+    - /api/users/check-username
+    - /api/users/check-email
+    - /actuator
+    - /swagger-ui
+    - /v3/api-docs
+    - /favicon.ico
+    - /error
+  allowed-headers:
+    - Authorization
+    - Content-Type
+    - Accept
+    - Origin
+
+# --- [修改点 2] ---
+# 删除了自定义的、未生效的 security.cors 配置块
+# ---
+# 安全配置
+security:
+  enabled: ${SECURITY_ENABLED:true}
+  authorization-enabled: ${AUTHORIZATION_ENABLED:true}
+  rate-limit-enabled: ${RATE_LIMIT_ENABLED:true}
+  # security.cors 配置块已删除
+  security-headers:
+    enabled: true
+    content-type-options: nosniff
+    frame-options: DENY
+    xss-protection: "1; mode=block"
+    strict-transport-security: "max-age=31536000; includeSubDomains"
+    content-security-policy: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"
+    referrer-policy: strict-origin-when-cross-origin
+
+# 日志配置
+logging:
+  level:
+    com.zd.scgateway: DEBUG
+    org.springframework.cloud.gateway: DEBUG
+    reactor.netty: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

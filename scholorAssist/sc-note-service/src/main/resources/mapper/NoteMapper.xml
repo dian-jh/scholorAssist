@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zd.scnoteservice.mapper.NoteMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.zd.scnoteservice.model.domain.Note">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="note_id" property="noteId" jdbcType="VARCHAR"/>
+        <result column="user_id" property="userId" jdbcType="VARCHAR"/>
+        <result column="document_id" property="documentId" jdbcType="VARCHAR"/>
+        <result column="title" property="title" jdbcType="VARCHAR"/>
+        <result column="content" property="content" jdbcType="VARCHAR"/>
+        <result column="page_number" property="pageNumber" jdbcType="INTEGER"/>
+        <result column="selected_text" property="selectedText" jdbcType="VARCHAR"/>
+        <result column="position_info" property="positionInfo" jdbcType="OTHER" typeHandler="com.zd.scnoteservice.config.PostgreSQLJsonbTypeHandler"/>
+        <result column="tags" property="tags" jdbcType="OTHER" typeHandler="com.zd.scnoteservice.config.PostgreSQLJsonbTypeHandler"/>
+        <result column="is_favorite" property="isFavorite" jdbcType="BOOLEAN"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
+        <result column="updated_at" property="updatedAt" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <!-- 基础字段 -->
+    <sql id="Base_Column_List">
+        id, note_id, user_id, document_id, title, content, page_number, 
+        selected_text, position_info, tags, is_favorite, created_at, updated_at
+    </sql>
+
+    <!-- 批量插入笔记 -->
+    <insert id="batchInsert" parameterType="java.util.List">
+        INSERT INTO notes (note_id, user_id, document_id, title, content, page_number, 
+                          selected_text, position_info, tags, is_favorite, created_at, updated_at)
+        VALUES
+        <foreach collection="entities" item="note" separator=",">
+            (#{note.noteId}, #{note.userId}, #{note.documentId}, #{note.title}, #{note.content}, 
+             #{note.pageNumber}, #{note.selectedText}, #{note.positionInfo}, #{note.tags}, 
+             #{note.isFavorite}, #{note.createdAt}, #{note.updatedAt})
+        </foreach>
+    </insert>
+
+    <!-- 根据笔记ID查询笔记 -->
+    <select id="selectByNoteId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM notes
+        WHERE note_id = #{noteId}
+    </select>
+
+    <!-- 根据用户ID查询笔记列表 -->
+    <select id="selectByUserId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM notes
+        WHERE user_id = #{userId}
+        ORDER BY created_at DESC
+    </select>
+
+    <!-- 根据文档ID查询笔记列表 -->
+    <select id="selectByDocumentId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM notes
+        WHERE document_id = #{documentId}
+        ORDER BY page_number ASC, created_at ASC
+    </select>
+
+    <!-- 根据用户ID和文档ID查询笔记列表 -->
+    <select id="selectByUserIdAndDocumentId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM notes
+        WHERE user_id = #{userId} AND document_id = #{documentId}
+        ORDER BY page_number ASC, created_at ASC
+    </select>
+
+    <!-- 根据用户ID、文档ID和页码查询笔记列表 -->
+    <select id="selectByUserIdAndDocumentIdAndPageNumber" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM notes
+        WHERE user_id = #{userId} 
+          AND document_id = #{documentId} 
+          AND page_number = #{pageNumber}
+        ORDER BY created_at ASC
+    </select>
+
+    <!-- 根据用户ID分页查询笔记列表 -->
+    <select id="selectByUserIdWithPage" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM notes
+        WHERE user_id = #{userId}
+        ORDER BY created_at DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <!-- 根据文档ID分页查询笔记列表 -->
+    <select id="selectByDocumentIdWithPage" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM notes
+        WHERE document_id = #{documentId}
+        ORDER BY page_number ASC, created_at ASC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <!-- 根据用户ID和文档ID分页查询笔记列表 -->
+    <select id="selectByUserIdAndDocumentIdWithPage" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM notes
+        <where>
+            user_id = #{userId}
+            <if test="documentId != null and documentId != ''">
+                AND document_id = #{documentId}
+            </if>
+        </where>
+        ORDER BY 
+        <choose>
+            <when test="documentId != null and documentId != ''">
+                page_number ASC, created_at ASC
+            </when>
+            <otherwise>
+                created_at DESC
+            </otherwise>
+        </choose>
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <!-- 统计用户笔记总数 -->
+    <select id="countByUserId" resultType="long">
+        SELECT COUNT(1)
+        FROM notes
+        WHERE user_id = #{userId}
+    </select>
+
+    <!-- 统计文档笔记总数 -->
+    <select id="countByDocumentId" resultType="long">
+        SELECT COUNT(1)
+        FROM notes
+        WHERE document_id = #{documentId}
+    </select>
+
+    <!-- 统计用户在指定文档下的笔记总数 -->
+    <select id="countByUserIdAndDocumentId" resultType="long">
+        SELECT COUNT(1)
+        FROM notes
+        <where>
+            user_id = #{userId}
+            <if test="documentId != null and documentId != ''">
+                AND document_id = #{documentId}
+            </if>
+        </where>
+    </select>
+
+    <!-- 根据用户ID查询收藏的笔记列表 -->
+    <select id="selectFavoritesByUserId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM notes
+        WHERE user_id = #{userId} AND is_favorite = true
+        ORDER BY created_at DESC
+    </select>
+
+    <!-- 根据标签查询笔记列表 -->
+    <select id="selectByUserIdAndTag" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM notes
+        WHERE user_id = #{userId} 
+          AND tags @> ARRAY[#{tag}]::text[]
+        ORDER BY created_at DESC
+    </select>
+
+    <!-- 根据笔记ID更新笔记信息 -->
+    <update id="updateByNoteId" parameterType="com.zd.scnoteservice.model.domain.Note">
+        UPDATE notes
+        <set>
+            <if test="note.title != null and note.title != ''">
+                title = #{note.title},
+            </if>
+            <if test="note.content != null and note.content != ''">
+                content = #{note.content},
+            </if>
+            <if test="note.pageNumber != null">
+                page_number = #{note.pageNumber},
+            </if>
+            <if test="note.selectedText != null">
+                selected_text = #{note.selectedText},
+            </if>
+            <if test="note.positionInfo != null">
+                position_info = #{note.positionInfo, jdbcType=OTHER, typeHandler=com.zd.scnoteservice.config.PostgreSQLJsonbTypeHandler},
+            </if>
+            <if test="note.tags != null">
+                tags = #{note.tags, jdbcType=OTHER, typeHandler=com.zd.scnoteservice.config.PostgreSQLJsonbTypeHandler},
+            </if>
+            <if test="note.isFavorite != null">
+                is_favorite = #{note.isFavorite},
+            </if>
+            updated_at = CURRENT_TIMESTAMP
+        </set>
+        WHERE note_id = #{note.noteId}
+    </update>
+
+    <!-- 根据笔记ID删除笔记 -->
+    <delete id="deleteByNoteId">
+        DELETE FROM notes 
+        WHERE note_id = #{noteId}
+    </delete>
+
+    <!-- 根据文档ID批量删除笔记 -->
+    <delete id="deleteByDocumentId">
+        DELETE FROM notes 
+        WHERE document_id = #{documentId}
+    </delete>
+
+    <!-- 根据用户ID批量删除笔记 -->
+    <delete id="deleteByUserId">
+        DELETE FROM notes 
+        WHERE user_id = #{userId}
+    </delete>
+
+</mapper>

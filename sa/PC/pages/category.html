@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>类目管理 - 文献辅助阅读系统</title>
+    <!-- 功能要点：多级分类树形结构管理，支持拖拽排序，批量操作，类目统计 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1763EA',
+                        'primary-dark': '#1451C7',
+                        background: '#F8FAFF'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background min-h-screen">
+    <!-- 顶部导航栏 -->
+    <nav class="bg-white shadow-sm border-b border-gray-200 fixed top-0 left-0 right-0 z-40">
+        <div class="px-6 py-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <a href="dashboard.html" class="text-gray-600 hover:text-primary">
+                        <i class="fas fa-arrow-left text-lg"></i>
+                    </a>
+                    <div class="flex items-center">
+                        <i class="fas fa-folder-tree text-primary text-lg mr-3"></i>
+                        <h1 class="text-lg font-semibold text-gray-900">类目管理</h1>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <!-- 搜索框 -->
+                    <div class="relative">
+                        <input type="text" id="searchInput" placeholder="搜索类目..." 
+                               class="w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                        <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    </div>
+                    
+                    <!-- 操作按钮 -->
+                    <button id="addRootCategoryBtn" class="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-medium">
+                        <i class="fas fa-plus mr-2"></i>新建根类目
+                    </button>
+                    
+                    <!-- 用户菜单 -->
+                    <div class="relative">
+                        <button id="userMenuBtn" class="flex items-center space-x-2 text-gray-700 hover:text-primary">
+                            <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                                <i class="fas fa-user text-white text-sm"></i>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主内容区域 -->
+    <div class="pt-16 p-6">
+        <div class="max-w-7xl mx-auto">
+            <!-- 统计卡片 -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-folder text-blue-600"></i>
+                            </div>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">总类目数</p>
+                            <p id="totalCategories" class="text-2xl font-semibold text-gray-900">12</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-sitemap text-green-600"></i>
+                            </div>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">根类目数</p>
+                            <p id="rootCategories" class="text-2xl font-semibold text-gray-900">4</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-file-alt text-yellow-600"></i>
+                            </div>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">文档总数</p>
+                            <p id="totalDocuments" class="text-2xl font-semibold text-gray-900">156</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-layer-group text-purple-600"></i>
+                            </div>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-gray-600">最大层级</p>
+                            <p id="maxDepth" class="text-2xl font-semibold text-gray-900">3</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 主要内容区 -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- 类目树 -->
+                <div class="lg:col-span-2">
+                    <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <div class="flex items-center justify-between">
+                                <h2 class="text-lg font-semibold text-gray-900">类目结构</h2>
+                                <div class="flex items-center space-x-2">
+                                    <button id="expandAllBtn" class="text-sm text-gray-600 hover:text-primary">
+                                        <i class="fas fa-expand-arrows-alt mr-1"></i>全部展开
+                                    </button>
+                                    <button id="collapseAllBtn" class="text-sm text-gray-600 hover:text-primary">
+                                        <i class="fas fa-compress-arrows-alt mr-1"></i>全部收起
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="p-6">
+                            <div id="categoryTree" class="space-y-2">
+                                <!-- 动态加载类目树 -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 操作面板 -->
+                <div class="space-y-6">
+                    <!-- 选中类目信息 -->
+                    <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <h3 class="text-lg font-semibold text-gray-900">类目详情</h3>
+                        </div>
+                        
+                        <div class="p-6">
+                            <div id="categoryDetails">
+                                <div class="text-center py-8 text-gray-500">
+                                    <i class="fas fa-folder-open text-4xl mb-4"></i>
+                                    <p>请选择一个类目</p>
+                                    <p class="text-sm">点击左侧类目查看详细信息</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 快速操作 -->
+                    <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <h3 class="text-lg font-semibold text-gray-900">快速操作</h3>
+                        </div>
+                        
+                        <div class="p-6 space-y-3">
+                            <button id="addSubCategoryBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                <i class="fas fa-plus mr-2"></i>添加子类目
+                            </button>
+                            
+                            <button id="editCategoryBtn" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                <i class="fas fa-edit mr-2"></i>编辑类目
+                            </button>
+                            
+                            <button id="moveCategoryBtn" class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                <i class="fas fa-arrows-alt mr-2"></i>移动类目
+                            </button>
+                            
+                            <button id="deleteCategoryBtn" class="w-full bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                <i class="fas fa-trash mr-2"></i>删除类目
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 批量操作 -->
+                    <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                        <div class="px-6 py-4 border-b border-gray-200">
+                            <h3 class="text-lg font-semibold text-gray-900">批量操作</h3>
+                        </div>
+                        
+                        <div class="p-6 space-y-3">
+                            <button id="selectAllBtn" class="w-full bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                                <i class="fas fa-check-square mr-2"></i>全选
+                            </button>
+                            
+                            <button id="batchMoveBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                                <i class="fas fa-exchange-alt mr-2"></i>批量移动
+                            </button>
+                            
+                            <button id="batchDeleteBtn" class="w-full bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                                <i class="fas fa-trash-alt mr-2"></i>批量删除
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 类目编辑弹窗 -->
+    <div id="categoryModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div class="flex items-center justify-between mb-4">
+                <h3 id="modalTitle" class="text-lg font-semibold text-gray-900">新建类目</h3>
+                <button id="closeCategoryModal" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <form id="categoryForm" class="space-y-4">
+                <div>
+                    <label for="categoryName" class="block text-sm font-medium text-gray-700 mb-2">类目名称</label>
+                    <input type="text" id="categoryName" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                           placeholder="请输入类目名称">
+                </div>
+                
+                <div>
+                    <label for="categoryDescription" class="block text-sm font-medium text-gray-700 mb-2">描述（可选）</label>
+                    <textarea id="categoryDescription" rows="3"
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
+                              placeholder="请输入类目描述"></textarea>
+                </div>
+                
+                <div>
+                    <label for="parentCategory" class="block text-sm font-medium text-gray-700 mb-2">父类目</label>
+                    <select id="parentCategory" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                        <option value="">根类目</option>
+                        <!-- 动态加载父类目选项 -->
+                    </select>
+                </div>
+                
+                <div>
+                    <label for="categoryColor" class="block text-sm font-medium text-gray-700 mb-2">颜色标识</label>
+                    <div class="flex space-x-2">
+                        <div class="color-option w-8 h-8 bg-blue-500 rounded cursor-pointer border-2 border-transparent" data-color="#3B82F6"></div>
+                        <div class="color-option w-8 h-8 bg-green-500 rounded cursor-pointer border-2 border-transparent" data-color="#10B981"></div>
+                        <div class="color-option w-8 h-8 bg-yellow-500 rounded cursor-pointer border-2 border-transparent" data-color="#F59E0B"></div>
+                        <div class="color-option w-8 h-8 bg-red-500 rounded cursor-pointer border-2 border-transparent" data-color="#EF4444"></div>
+                        <div class="color-option w-8 h-8 bg-purple-500 rounded cursor-pointer border-2 border-transparent" data-color="#8B5CF6"></div>
+                        <div class="color-option w-8 h-8 bg-pink-500 rounded cursor-pointer border-2 border-transparent" data-color="#EC4899"></div>
+                        <div class="color-option w-8 h-8 bg-indigo-500 rounded cursor-pointer border-2 border-transparent" data-color="#6366F1"></div>
+                        <div class="color-option w-8 h-8 bg-gray-500 rounded cursor-pointer border-2 border-transparent" data-color="#6B7280"></div>
+                    </div>
+                    <input type="hidden" id="selectedColor" value="#3B82F6">
+                </div>
+            </form>
+            
+            <div class="flex justify-end space-x-3 mt-6">
+                <button id="cancelCategory" class="px-4 py-2 text-gray-600 hover:text-gray-800">取消</button>
+                <button id="saveCategory" class="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-md">
+                    保存
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 移动类目弹窗 -->
+    <div id="moveModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-gray-900">移动类目</h3>
+                <button id="closeMoveModal" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="mb-4">
+                <p class="text-sm text-gray-600 mb-2">将类目移动到：</p>
+                <select id="moveToCategory" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                    <option value="">根目录</option>
+                    <!-- 动态加载目标类目选项 -->
+                </select>
+            </div>
+            
+            <div class="flex justify-end space-x-3">
+                <button id="cancelMove" class="px-4 py-2 text-gray-600 hover:text-gray-800">取消</button>
+                <button id="confirmMove" class="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-md">
+                    确认移动
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let categories = [];
+        let selectedCategory = null;
+        let selectedCategories = new Set();
+        let editingCategory = null;
+
+        // 页面加载时初始化
+        window.addEventListener('load', function() {
+            // 检查登录状态
+            if (!localStorage.getItem('isLoggedIn')) {
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            loadCategories();
+            initializeEventListeners();
+        });
+
+        // 加载类目数据
+        async function loadCategories() {
+            try {
+                const response = await fetch('../data/mock_categories.json');
+                categories = await response.json();
+                renderCategoryTree();
+                updateStatistics();
+            } catch (error) {
+                console.error('加载类目失败:', error);
+                showToast('加载类目失败', 'error');
+            }
+        }
+
+        // 渲染类目树
+        function renderCategoryTree() {
+            const container = document.getElementById('categoryTree');
+            container.innerHTML = '';
+            
+            if (categories.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8 text-gray-500">
+                        <i class="fas fa-folder-plus text-4xl mb-4"></i>
+                        <p>还没有类目</p>
+                        <p class="text-sm">点击"新建根类目"开始创建</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            categories.forEach(category => {
+                if (!category.parent_id) {
+                    const categoryElement = createCategoryElement(category, 0);
+                    container.appendChild(categoryElement);
+                }
+            });
+        }
+
+        // 创建类目元素
+        function createCategoryElement(category, level) {
+            const div = document.createElement('div');
+            div.className = 'category-item';
+            div.dataset.categoryId = category.id;
+            
+            const hasChildren = categories.some(c => c.parent_id === category.id);
+            const isExpanded = category.expanded !== false;
+            
+            div.innerHTML = `
+                <div class="flex items-center p-3 hover:bg-gray-50 rounded-lg cursor-pointer category-header" 
+                     style="padding-left: ${level * 24 + 12}px" 
+                     onclick="selectCategory('${category.id}')">
+                    <div class="flex items-center flex-1">
+                        ${hasChildren ? `
+                            <button class="expand-btn mr-2 w-4 h-4 flex items-center justify-center text-gray-400 hover:text-gray-600" 
+                                    onclick="event.stopPropagation(); toggleCategory('${category.id}')">
+                                <i class="fas fa-chevron-${isExpanded ? 'down' : 'right'} text-xs"></i>
+                            </button>
+                        ` : '<div class="w-6"></div>'}
+                        
+                        <div class="w-4 h-4 rounded mr-3" style="background-color: ${category.color || '#3B82F6'}"></div>
+                        
+                        <div class="flex-1">
+                            <div class="flex items-center">
+                                <span class="font-medium text-gray-900">${category.name}</span>
+                                <span class="ml-2 text-xs text-gray-500">(${category.document_count || 0})</span>
+                            </div>
+                            ${category.description ? `
+                                <p class="text-sm text-gray-600 mt-1">${category.description}</p>
+                            ` : ''}
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onclick="event.stopPropagation(); addSubCategory('${category.id}')" 
+                                class="p-1 text-gray-400 hover:text-blue-600" title="添加子类目">
+                            <i class="fas fa-plus text-xs"></i>
+                        </button>
+                        <button onclick="event.stopPropagation(); editCategory('${category.id}')" 
+                                class="p-1 text-gray-400 hover:text-yellow-600" title="编辑">
+                            <i class="fas fa-edit text-xs"></i>
+                        </button>
+                        <button onclick="event.stopPropagation(); deleteCategory('${category.id}')" 
+                                class="p-1 text-gray-400 hover:text-red-600" title="删除">
+                            <i class="fas fa-trash text-xs"></i>
+                        </button>
+                    </div>
+                    
+                    <input type="checkbox" class="ml-2 category-checkbox" 
+                           onchange="toggleCategorySelection('${category.id}', this.checked)">
+                </div>
+                
+                <div class="children ${isExpanded ? '' : 'hidden'}">
+                    ${categories.filter(c => c.parent_id === category.id)
+                        .map(child => createCategoryElement(child, level + 1).outerHTML)
+                        .join('')}
+                </div>
+            `;
+            
+            return div;
+        }
+
+        // 选择类目
+        function selectCategory(categoryId) {
+            selectedCategory = categories.find(c => c.id === categoryId);
+            
+            // 更新选中状态
+            document.querySelectorAll('.category-header').forEach(header => {
+                header.classList.remove('bg-blue-50', 'border-blue-200');
+            });
+            
+            const selectedHeader = document.querySelector(`[data-category-id="${categoryId}"] .category-header`);
+            if (selectedHeader) {
+                selectedHeader.classList.add('bg-blue-50', 'border-blue-200');
+            }
+            
+            // 显示类目详情
+            showCategoryDetails(selectedCategory);
+            
+            // 启用操作按钮
+            document.getElementById('addSubCategoryBtn').disabled = false;
+            document.getElementById('editCategoryBtn').disabled = false;
+            document.getElementById('moveCategoryBtn').disabled = false;
+            document.getElementById('deleteCategoryBtn').disabled = false;
+        }
+
+        // 显示类目详情
+        function showCategoryDetails(category) {
+            const container = document.getElementById('categoryDetails');
+            
+            if (!category) {
+                container.innerHTML = `
+                    <div class="text-center py-8 text-gray-500">
+                        <i class="fas fa-folder-open text-4xl mb-4"></i>
+                        <p>请选择一个类目</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const parentCategory = categories.find(c => c.id === category.parent_id);
+            const childCount = categories.filter(c => c.parent_id === category.id).length;
+            
+            container.innerHTML = `
+                <div class="space-y-4">
+                    <div class="flex items-center">
+                        <div class="w-6 h-6 rounded mr-3" style="background-color: ${category.color || '#3B82F6'}"></div>
+                        <h4 class="text-lg font-semibold text-gray-900">${category.name}</h4>
+                    </div>
+                    
+                    ${category.description ? `
+                        <div>
+                            <p class="text-sm font-medium text-gray-700 mb-1">描述</p>
+                            <p class="text-sm text-gray-600">${category.description}</p>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <p class="text-sm font-medium text-gray-700">文档数量</p>
+                            <p class="text-lg font-semibold text-gray-900">${category.document_count || 0}</p>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-700">子类目数</p>
+                            <p class="text-lg font-semibold text-gray-900">${childCount}</p>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <p class="text-sm font-medium text-gray-700 mb-1">路径</p>
+                        <p class="text-sm text-gray-600">
+                            ${parentCategory ? `${getFullPath(category)}` : '根目录'}
+                        </p>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4 text-xs text-gray-500">
+                        <div>
+                            <p>创建时间</p>
+                            <p>${formatDate(category.created_at)}</p>
+                        </div>
+                        <div>
+                            <p>更新时间</p>
+                            <p>${formatDate(category.updated_at)}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 获取完整路径
+        function getFullPath(category) {
+            const path = [];
+            let current = category;
+            
+            while (current) {
+                path.unshift(current.name);
+                current = categories.find(c => c.id === current.parent_id);
+            }
+            
+            return path.join(' / ');
+        }
+
+        // 切换类目展开/收起
+        function toggleCategory(categoryId) {
+            const category = categories.find(c => c.id === categoryId);
+            if (category) {
+                category.expanded = !category.expanded;
+                renderCategoryTree();
+            }
+        }
+
+        // 展开所有类目
+        function expandAll() {
+            categories.forEach(category => {
+                category.expanded = true;
+            });
+            renderCategoryTree();
+        }
+
+        // 收起所有类目
+        function collapseAll() {
+            categories.forEach(category => {
+                category.expanded = false;
+            });
+            renderCategoryTree();
+        }
+
+        // 初始化事件监听器
+        function initializeEventListeners() {
+            // 搜索
+            document.getElementById('searchInput').addEventListener('input', function() {
+                const query = this.value.toLowerCase();
+                filterCategories(query);
+            });
+
+            // 新建根类目
+            document.getElementById('addRootCategoryBtn').addEventListener('click', function() {
+                openCategoryModal();
+            });
+
+            // 展开/收起
+            document.getElementById('expandAllBtn').addEventListener('click', expandAll);
+            document.getElementById('collapseAllBtn').addEventListener('click', collapseAll);
+
+            // 快速操作
+            document.getElementById('addSubCategoryBtn').addEventListener('click', function() {
+                if (selectedCategory) {
+                    openCategoryModal(selectedCategory.id);
+                }
+            });
+
+            document.getElementById('editCategoryBtn').addEventListener('click', function() {
+                if (selectedCategory) {
+                    editCategory(selectedCategory.id);
+                }
+            });
+
+            document.getElementById('moveCategoryBtn').addEventListener('click', function() {
+                if (selectedCategory) {
+                    openMoveModal(selectedCategory.id);
+                }
+            });
+
+            document.getElementById('deleteCategoryBtn').addEventListener('click', function() {
+                if (selectedCategory) {
+                    deleteCategory(selectedCategory.id);
+                }
+            });
+
+            // 弹窗事件
+            document.getElementById('closeCategoryModal').addEventListener('click', closeCategoryModal);
+            document.getElementById('saveCategory').addEventListener('click', saveCategory);
+            document.getElementById('closeMoveModal').addEventListener('click', closeMoveModal);
+            document.getElementById('confirmMove').addEventListener('click', confirmMove);
+
+            // 颜色选择
+            document.querySelectorAll('.color-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    document.querySelectorAll('.color-option').forEach(opt => {
+                        opt.classList.remove('border-gray-400');
+                    });
+                    this.classList.add('border-gray-400');
+                    document.getElementById('selectedColor').value = this.dataset.color;
+                });
+            });
+        }
+
+        // 打开类目弹窗
+        function openCategoryModal(parentId = null) {
+            editingCategory = null;
+            document.getElementById('modalTitle').textContent = parentId ? '新建子类目' : '新建根类目';
+            document.getElementById('categoryName').value = '';
+            document.getElementById('categoryDescription').value = '';
+            document.getElementById('parentCategory').value = parentId || '';
+            
+            // 重置颜色选择
+            document.querySelectorAll('.color-option').forEach(opt => {
+                opt.classList.remove('border-gray-400');
+            });
+            document.querySelector('.color-option').classList.add('border-gray-400');
+            document.getElementById('selectedColor').value = '#3B82F6';
+            
+            loadParentOptions();
+            document.getElementById('categoryModal').classList.remove('hidden');
+        }
+
+        // 编辑类目
+        function editCategory(categoryId) {
+            const category = categories.find(c => c.id === categoryId);
+            if (!category) return;
+            
+            editingCategory = category;
+            document.getElementById('modalTitle').textContent = '编辑类目';
+            document.getElementById('categoryName').value = category.name;
+            document.getElementById('categoryDescription').value = category.description || '';
+            document.getElementById('parentCategory').value = category.parent_id || '';
+            document.getElementById('selectedColor').value = category.color || '#3B82F6';
+            
+            // 设置颜色选择
+            document.querySelectorAll('.color-option').forEach(opt => {
+                opt.classList.remove('border-gray-400');
+                if (opt.dataset.color === category.color) {
+                    opt.classList.add('border-gray-400');
+                }
+            });
+            
+            loadParentOptions();
+            document.getElementById('categoryModal').classList.remove('hidden');
+        }
+
+        // 加载父类目选项
+        function loadParentOptions() {
+            const select = document.getElementById('parentCategory');
+            const currentId = editingCategory?.id;
+            
+            select.innerHTML = '<option value="">根目录</option>';
+            
+            categories.forEach(category => {
+                // 不能选择自己或自己的子类目作为父类目
+                if (currentId && (category.id === currentId || isDescendant(category.id, currentId))) {
+                    return;
+                }
+                
+                const option = document.createElement('option');
+                option.value = category.id;
+                option.textContent = getFullPath(category);
+                select.appendChild(option);
+            });
+        }
+
+        // 检查是否为子类目
+        function isDescendant(categoryId, ancestorId) {
+            const category = categories.find(c => c.id === categoryId);
+            if (!category || !category.parent_id) return false;
+            
+            if (category.parent_id === ancestorId) return true;
+            return isDescendant(category.parent_id, ancestorId);
+        }
+
+        // 保存类目
+        function saveCategory() {
+            const name = document.getElementById('categoryName').value.trim();
+            const description = document.getElementById('categoryDescription').value.trim();
+            const parentId = document.getElementById('parentCategory').value || null;
+            const color = document.getElementById('selectedColor').value;
+            
+            if (!name) {
+                showToast('请输入类目名称', 'error');
+                return;
+            }
+            
+            if (editingCategory) {
+                // 编辑模式
+                editingCategory.name = name;
+                editingCategory.description = description;
+                editingCategory.parent_id = parentId;
+                editingCategory.color = color;
+                editingCategory.updated_at = new Date().toISOString();
+            } else {
+                // 新建模式
+                const newCategory = {
+                    id: 'cat_' + Date.now(),
+                    name: name,
+                    description: description,
+                    parent_id: parentId,
+                    color: color,
+                    document_count: 0,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                    expanded: true
+                };
+                
+                categories.push(newCategory);
+            }
+            
+            renderCategoryTree();
+            updateStatistics();
+            closeCategoryModal();
+            showToast(editingCategory ? '类目更新成功' : '类目创建成功');
+        }
+
+        // 关闭类目弹窗
+        function closeCategoryModal() {
+            document.getElementById('categoryModal').classList.add('hidden');
+        }
+
+        // 删除类目
+        function deleteCategory(categoryId) {
+            const category = categories.find(c => c.id === categoryId);
+            if (!category) return;
+            
+            const hasChildren = categories.some(c => c.parent_id === categoryId);
+            const hasDocuments = category.document_count > 0;
+            
+            let message = `确定要删除类目"${category.name}"吗？`;
+            if (hasChildren) {
+                message += '\n\n注意：删除后其子类目将移动到上级类目。';
+            }
+            if (hasDocuments) {
+                message += `\n\n该类目下有 ${category.document_count} 个文档，删除后文档将移动到上级类目。`;
+            }
+            
+            if (confirm(message)) {
+                // 移动子类目到父类目
+                categories.forEach(child => {
+                    if (child.parent_id === categoryId) {
+                        child.parent_id = category.parent_id;
+                    }
+                });
+                
+                // 删除类目
+                const index = categories.findIndex(c => c.id === categoryId);
+                if (index > -1) {
+                    categories.splice(index, 1);
+                }
+                
+                selectedCategory = null;
+                renderCategoryTree();
+                updateStatistics();
+                showCategoryDetails(null);
+                
+                // 禁用操作按钮
+                document.getElementById('addSubCategoryBtn').disabled = true;
+                document.getElementById('editCategoryBtn').disabled = true;
+                document.getElementById('moveCategoryBtn').disabled = true;
+                document.getElementById('deleteCategoryBtn').disabled = true;
+                
+                showToast('类目删除成功');
+            }
+        }
+
+        // 打开移动弹窗
+        function openMoveModal(categoryId) {
+            const select = document.getElementById('moveToCategory');
+            select.innerHTML = '<option value="">根目录</option>';
+            
+            categories.forEach(category => {
+                // 不能移动到自己或自己的子类目
+                if (category.id === categoryId || isDescendant(category.id, categoryId)) {
+                    return;
+                }
+                
+                const option = document.createElement('option');
+                option.value = category.id;
+                option.textContent = getFullPath(category);
+                select.appendChild(option);
+            });
+            
+            document.getElementById('moveModal').classList.remove('hidden');
+        }
+
+        // 关闭移动弹窗
+        function closeMoveModal() {
+            document.getElementById('moveModal').classList.add('hidden');
+        }
+
+        // 确认移动
+        function confirmMove() {
+            if (!selectedCategory) return;
+            
+            const targetId = document.getElementById('moveToCategory').value || null;
+            selectedCategory.parent_id = targetId;
+            selectedCategory.updated_at = new Date().toISOString();
+            
+            renderCategoryTree();
+            closeMoveModal();
+            showToast('类目移动成功');
+        }
+
+        // 过滤类目
+        function filterCategories(query) {
+            const items = document.querySelectorAll('.category-item');
+            
+            items.forEach(item => {
+                const name = item.querySelector('.category-header span').textContent.toLowerCase();
+                const match = name.includes(query);
+                item.style.display = match ? 'block' : 'none';
+            });
+        }
+
+        // 更新统计信息
+        function updateStatistics() {
+            const totalCount = categories.length;
+            const rootCount = categories.filter(c => !c.parent_id).length;
+            const totalDocs = categories.reduce((sum, cat) => sum + (cat.document_count || 0), 0);
+            const maxDepth = calculateMaxDepth();
+            
+            document.getElementById('totalCategories').textContent = totalCount;
+            document.getElementById('rootCategories').textContent = rootCount;
+            document.getElementById('totalDocuments').textContent = totalDocs;
+            document.getElementById('maxDepth').textContent = maxDepth;
+        }
+
+        // 计算最大层级
+        function calculateMaxDepth() {
+            let maxDepth = 0;
+            
+            function getDepth(categoryId, currentDepth = 1) {
+                maxDepth = Math.max(maxDepth, currentDepth);
+                
+                categories.forEach(category => {
+                    if (category.parent_id === categoryId) {
+                        getDepth(category.id, currentDepth + 1);
+                    }
+                });
+            }
+            
+            categories.forEach(category => {
+                if (!category.parent_id) {
+                    getDepth(category.id);
+                }
+            });
+            
+            return maxDepth;
+        }
+
+        // 格式化日期
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('zh-CN');
+        }
+
+        // 显示提示消息
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `fixed top-20 right-4 px-4 py-2 rounded-md text-white z-50 ${
+                type === 'success' ? 'bg-green-500' : 'bg-red-500'
+            }`;
+            toast.textContent = message;
+            
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+
+        // 添加子类目
+        function addSubCategory(parentId) {
+            openCategoryModal(parentId);
+        }
+
+        // 切换类目选择
+        function toggleCategorySelection(categoryId, checked) {
+            if (checked) {
+                selectedCategories.add(categoryId);
+            } else {
+                selectedCategories.delete(categoryId);
+            }
+        }
+    </script>
+</body>
+</html>

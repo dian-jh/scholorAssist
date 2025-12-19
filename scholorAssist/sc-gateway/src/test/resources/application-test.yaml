@@ -1,0 +1,112 @@
+server:
+  port: 0 # 随机端口
+
+spring:
+  application:
+    name: sc-gateway-test
+  profiles:
+    active: test
+  cloud:
+    nacos:
+      discovery:
+        enabled: false # 测试环境禁用服务发现
+      config:
+        enabled: false # 测试环境禁用配置中心
+    gateway:
+      routes:
+        # 用户服务
+        - id: sc-user-service
+          uri: http://localhost:8081 # 测试用的固定地址
+          predicates:
+            - Path=/api/user/**
+          filters:
+            - StripPrefix=0
+            - name: GatewayJwtAuthenticationFilter
+            - name: SecurityHeadersFilter
+        # 文献管理服务
+        - id: sc-literature-manage
+          uri: http://localhost:8082
+          predicates:
+            - Path=/api/literature/**
+          filters:
+            - StripPrefix=0
+            - name: GatewayJwtAuthenticationFilter
+            - name: SecurityHeadersFilter
+        # 笔记服务
+        - id: sc-note-service
+          uri: http://localhost:8083
+          predicates:
+            - Path=/api/notes/**
+          filters:
+            - StripPrefix=0
+            - name: GatewayJwtAuthenticationFilter
+            - name: SecurityHeadersFilter
+
+# JWT配置
+jwt:
+  secret: testSecretKey123456789012345678901234567890
+  default-expiration: 3600 # 1小时
+  remember-me-expiration: 86400 # 24小时
+  enabled: true
+  debug: true # 测试环境启用调试
+  excluded-paths:
+    - /api/user/register
+    - /api/user/login
+    - /api/user/check-username
+    - /api/user/check-email
+    - /actuator
+    - /swagger-ui
+    - /v3/api-docs
+    - /favicon.ico
+    - /error
+  allowed-headers:
+    - Authorization
+    - Content-Type
+    - Accept
+    - Origin
+    - X-Requested-With
+
+# 安全配置
+security:
+  enabled: true
+  authorization-enabled: true
+  rate-limit-enabled: false # 测试环境禁用限流
+  cors:
+    enabled: true
+    allowed-origins:
+      - http://localhost:3000
+      - http://localhost:8080
+    allowed-methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+      - OPTIONS
+    allowed-headers:
+      - Authorization
+      - Content-Type
+      - Accept
+      - Origin
+      - X-Requested-With
+      - X-User-Id
+      - X-Username
+      - X-User-Role
+    allow-credentials: true
+    max-age: 3600
+  security-headers:
+    enabled: true
+    content-type-options: nosniff
+    frame-options: DENY
+    xss-protection: "1; mode=block"
+    strict-transport-security: "max-age=31536000; includeSubDomains"
+    content-security-policy: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"
+    referrer-policy: strict-origin-when-cross-origin
+
+# 日志配置
+logging:
+  level:
+    com.zd.scgateway: DEBUG
+    org.springframework.cloud.gateway: DEBUG
+    reactor.netty: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

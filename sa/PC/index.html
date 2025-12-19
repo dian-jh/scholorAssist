@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文献辅助阅读系统</title>
+    <!-- 功能要点：系统主入口，iframe集成各功能页面，统一导航栏，响应式布局 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1763EA',
+                        'primary-dark': '#1451C7',
+                        background: '#F8FAFF'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .sidebar-transition {
+            transition: width 0.3s ease-in-out;
+        }
+        
+        .content-transition {
+            transition: margin-left 0.3s ease-in-out;
+        }
+        
+        .nav-item {
+            transition: all 0.2s ease-in-out;
+        }
+        
+        .nav-item:hover {
+            background-color: rgba(23, 99, 234, 0.1);
+        }
+        
+        .nav-item.active {
+            background-color: rgba(23, 99, 234, 0.15);
+            border-right: 3px solid #1763EA;
+        }
+        
+        .iframe-container {
+            height: calc(100vh - 64px);
+        }
+        
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #1763EA;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .notification-badge {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            background: #ef4444;
+            color: white;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body class="bg-background">
+    <!-- 顶部导航栏 -->
+    <nav class="bg-white shadow-sm border-b border-gray-200 fixed top-0 left-0 right-0 z-50">
+        <div class="px-4 py-3">
+            <div class="flex items-center justify-between">
+                <!-- 左侧：Logo和系统名称 -->
+                <div class="flex items-center space-x-4">
+                    <button id="sidebarToggle" class="text-gray-600 hover:text-primary lg:hidden">
+                        <i class="fas fa-bars text-lg"></i>
+                    </button>
+                    
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                            <i class="fas fa-book-open text-white text-sm"></i>
+                        </div>
+                        <div>
+                            <h1 class="text-lg font-semibold text-gray-900">文献辅助阅读系统</h1>
+                            <p class="text-xs text-gray-500 hidden sm:block">Literature Assisted Reading System</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 中间：快速搜索 -->
+                <div class="hidden md:flex flex-1 max-w-md mx-8">
+                    <div class="relative w-full">
+                        <input type="text" id="globalSearch" placeholder="搜索文档、笔记、对话..." 
+                               class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                        <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    </div>
+                </div>
+                
+                <!-- 右侧：通知和用户菜单 -->
+                <div class="flex items-center space-x-4">
+                    <!-- 通知 -->
+                    <div class="relative">
+                        <button id="notificationBtn" class="text-gray-600 hover:text-primary relative">
+                            <i class="fas fa-bell text-lg"></i>
+                            <span id="notificationBadge" class="notification-badge hidden">3</span>
+                        </button>
+                    </div>
+                    
+                    <!-- 帮助 -->
+                    <button id="helpBtn" class="text-gray-600 hover:text-primary">
+                        <i class="fas fa-question-circle text-lg"></i>
+                    </button>
+                    
+                    <!-- 用户菜单 -->
+                    <div class="relative">
+                        <button id="userMenuBtn" class="flex items-center space-x-2 text-gray-700 hover:text-primary">
+                            <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                                <i class="fas fa-user text-white text-sm"></i>
+                            </div>
+                            <span class="hidden sm:block text-sm font-medium" id="userName">用户</span>
+                            <i class="fas fa-chevron-down text-xs"></i>
+                        </button>
+                        
+                        <!-- 用户下拉菜单 -->
+                        <div id="userDropdown" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 hidden z-50">
+                            <div class="py-1">
+                                <a href="#" onclick="navigateTo('profile')" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                    <i class="fas fa-user-cog mr-2"></i>个人设置
+                                </a>
+                                <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                    <i class="fas fa-key mr-2"></i>修改密码
+                                </a>
+                                <div class="border-t border-gray-100"></div>
+                                <a href="#" onclick="logout()" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                    <i class="fas fa-sign-out-alt mr-2"></i>退出登录
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 侧边栏 -->
+    <aside id="sidebar" class="fixed left-0 top-16 h-full bg-white shadow-lg border-r border-gray-200 z-40 sidebar-transition w-64">
+        <div class="p-4">
+            <!-- 快速操作 -->
+            <div class="mb-6">
+                <button onclick="navigateTo('dashboard')" class="w-full bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-medium mb-2">
+                    <i class="fas fa-plus mr-2"></i>开始阅读
+                </button>
+                <button onclick="uploadDocument()" class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                    <i class="fas fa-upload mr-2"></i>上传文档
+                </button>
+            </div>
+            
+            <!-- 导航菜单 -->
+            <nav class="space-y-1">
+                <div class="nav-item active" onclick="navigateTo('dashboard')" data-page="dashboard">
+                    <div class="flex items-center px-3 py-2 cursor-pointer">
+                        <i class="fas fa-tachometer-alt text-primary mr-3"></i>
+                        <span class="text-gray-900 font-medium">工作台</span>
+                    </div>
+                </div>
+                
+                <div class="nav-item" onclick="navigateTo('category')" data-page="category">
+                    <div class="flex items-center px-3 py-2 cursor-pointer">
+                        <i class="fas fa-folder-tree text-gray-600 mr-3"></i>
+                        <span class="text-gray-700">分类管理</span>
+                    </div>
+                </div>
+                
+                <div class="nav-item" onclick="navigateTo('notes')" data-page="notes">
+                    <div class="flex items-center px-3 py-2 cursor-pointer">
+                        <i class="fas fa-sticky-note text-gray-600 mr-3"></i>
+                        <span class="text-gray-700">笔记管理</span>
+                        <span class="ml-auto bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">12</span>
+                    </div>
+                </div>
+                
+                <div class="nav-item" onclick="navigateTo('ai_chat')" data-page="ai_chat">
+                    <div class="flex items-center px-3 py-2 cursor-pointer">
+                        <i class="fas fa-robot text-gray-600 mr-3"></i>
+                        <span class="text-gray-700">AI对话</span>
+                        <span class="ml-auto bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">8</span>
+                    </div>
+                </div>
+                
+                <div class="border-t border-gray-200 my-4"></div>
+                
+                <!-- 最近文档 -->
+                <div class="mb-4">
+                    <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">最近阅读</h3>
+                    <div id="recentDocuments" class="space-y-1">
+                        <!-- 动态加载最近文档 -->
+                    </div>
+                </div>
+                
+                <!-- 快捷标签 -->
+                <div>
+                    <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">快捷标签</h3>
+                    <div class="flex flex-wrap gap-1">
+                        <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded cursor-pointer hover:bg-blue-200">重要</span>
+                        <span class="px-2 py-1 bg-green-100 text-green-800 text-xs rounded cursor-pointer hover:bg-green-200">待读</span>
+                        <span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded cursor-pointer hover:bg-yellow-200">收藏</span>
+                    </div>
+                </div>
+            </nav>
+        </div>
+    </aside>
+
+    <!-- 主内容区域 -->
+    <main id="mainContent" class="content-transition ml-64 pt-16">
+        <!-- 加载指示器 -->
+        <div id="loadingIndicator" class="flex items-center justify-center h-full hidden">
+            <div class="text-center">
+                <div class="loading-spinner mx-auto mb-4"></div>
+                <p class="text-gray-600">正在加载...</p>
+            </div>
+        </div>
+        
+        <!-- iframe容器 -->
+        <iframe id="contentFrame" 
+                src="pages/dashboard.html" 
+                class="w-full iframe-container border-0"
+                onload="handleFrameLoad()"
+                onerror="handleFrameError()">
+        </iframe>
+        
+        <!-- 错误状态 -->
+        <div id="errorState" class="flex items-center justify-center h-full hidden">
+            <div class="text-center">
+                <i class="fas fa-exclamation-triangle text-6xl text-red-400 mb-4"></i>
+                <h3 class="text-lg font-medium text-gray-900 mb-2">页面加载失败</h3>
+                <p class="text-gray-600 mb-4">请检查网络连接或稍后重试</p>
+                <button onclick="reloadCurrentPage()" class="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg">
+                    重新加载
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- 通知面板 -->
+    <div id="notificationPanel" class="fixed top-16 right-4 w-80 bg-white rounded-lg shadow-lg border border-gray-200 hidden z-50">
+        <div class="p-4 border-b border-gray-200">
+            <div class="flex items-center justify-between">
+                <h3 class="font-semibold text-gray-900">通知</h3>
+                <button id="closeNotifications" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div class="max-h-96 overflow-y-auto">
+            <div id="notificationList" class="divide-y divide-gray-200">
+                <!-- 动态加载通知 -->
+            </div>
+        </div>
+        
+        <div class="p-4 border-t border-gray-200">
+            <button class="w-full text-center text-sm text-primary hover:text-primary-dark">
+                查看全部通知
+            </button>
+        </div>
+    </div>
+
+    <!-- 帮助面板 -->
+    <div id="helpPanel" class="fixed top-16 right-4 w-80 bg-white rounded-lg shadow-lg border border-gray-200 hidden z-50">
+        <div class="p-4 border-b border-gray-200">
+            <div class="flex items-center justify-between">
+                <h3 class="font-semibold text-gray-900">帮助中心</h3>
+                <button id="closeHelp" class="text-gray-400 hover:text-gray-600">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div class="p-4 space-y-3">
+            <a href="#" class="block p-3 rounded-lg hover:bg-gray-50">
+                <div class="flex items-center">
+                    <i class="fas fa-book text-blue-600 mr-3"></i>
+                    <div>
+                        <p class="font-medium text-gray-900">使用指南</p>
+                        <p class="text-sm text-gray-600">了解系统基本功能</p>
+                    </div>
+                </div>
+            </a>
+            
+            <a href="#" class="block p-3 rounded-lg hover:bg-gray-50">
+                <div class="flex items-center">
+                    <i class="fas fa-video text-green-600 mr-3"></i>
+                    <div>
+                        <p class="font-medium text-gray-900">视频教程</p>
+                        <p class="text-sm text-gray-600">观看操作演示</p>
+                    </div>
+                </div>
+            </div>
+            
+            <a href="#" class="block p-3 rounded-lg hover:bg-gray-50">
+                <div class="flex items-center">
+                    <i class="fas fa-question-circle text-yellow-600 mr-3"></i>
+                    <div>
+                        <p class="font-medium text-gray-900">常见问题</p>
+                        <p class="text-sm text-gray-600">快速解决问题</p>
+                    </div>
+                </div>
+            </a>
+            
+            <a href="#" class="block p-3 rounded-lg hover:bg-gray-50">
+                <div class="flex items-center">
+                    <i class="fas fa-headset text-purple-600 mr-3"></i>
+                    <div>
+                        <p class="font-medium text-gray-900">联系客服</p>
+                        <p class="text-sm text-gray-600">获取人工帮助</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let currentPage = 'dashboard';
+        let sidebarCollapsed = false;
+        let recentDocuments = [];
+
+        // 页面加载时初始化
+        window.addEventListener('load', function() {
+            // 检查登录状态
+            if (!localStorage.getItem('isLoggedIn')) {
+                window.location.href = 'pages/login.html';
+                return;
+            }
+            
+            initializeSystem();
+            loadUserInfo();
+            loadRecentDocuments();
+            loadNotifications();
+            setupEventListeners();
+        });
+
+        // 初始化系统
+        function initializeSystem() {
+            // 设置默认页面
+            navigateTo('dashboard');
+            
+            // 响应式处理
+            handleResize();
+            window.addEventListener('resize', handleResize);
+        }
+
+        // 加载用户信息
+        function loadUserInfo() {
+            const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+            document.getElementById('userName').textContent = userInfo.name || '用户';
+        }
+
+        // 加载最近文档
+        async function loadRecentDocuments() {
+            try {
+                const response = await fetch('data/mock_documents.json');
+                const documents = await response.json();
+                
+                // 模拟最近阅读的文档（取前5个）
+                recentDocuments = documents.slice(0, 5);
+                renderRecentDocuments();
+            } catch (error) {
+                console.error('加载最近文档失败:', error);
+            }
+        }
+
+        // 渲染最近文档
+        function renderRecentDocuments() {
+            const container = document.getElementById('recentDocuments');
+            container.innerHTML = '';
+            
+            recentDocuments.forEach(doc => {
+                const item = document.createElement('div');
+                item.className = 'flex items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded cursor-pointer';
+                item.onclick = () => openDocument(doc.id);
+                
+                item.innerHTML = `
+                    <i class="fas fa-file-pdf text-red-500 mr-2 text-xs"></i>
+                    <span class="truncate flex-1">${doc.title}</span>
+                `;
+                
+                container.appendChild(item);
+            });
+        }
+
+        // 加载通知
+        function loadNotifications() {
+            const notifications = [
+                {
+                    id: 1,
+                    type: 'info',
+                    title: '系统更新',
+                    message: '新版本已发布，包含多项功能改进',
+                    time: '2小时前',
+                    read: false
+                },
+                {
+                    id: 2,
+                    type: 'success',
+                    title: '文档上传成功',
+                    message: '《深度学习基础》已成功上传并处理完成',
+                    time: '1天前',
+                    read: false
+                },
+                {
+                    id: 3,
+                    type: 'warning',
+                    title: '存储空间提醒',
+                    message: '您的存储空间使用率已达到80%',
+                    time: '2天前',
+                    read: true
+                }
+            ];
+            
+            renderNotifications(notifications);
+            updateNotificationBadge(notifications);
+        }
+
+        // 渲染通知
+        function renderNotifications(notifications) {
+            const container = document.getElementById('notificationList');
+            container.innerHTML = '';
+            
+            notifications.forEach(notification => {
+                const item = document.createElement('div');
+                item.className = `p-4 hover:bg-gray-50 cursor-pointer ${!notification.read ? 'bg-blue-50' : ''}`;
+                
+                const iconClass = {
+                    'info': 'fas fa-info-circle text-blue-500',
+                    'success': 'fas fa-check-circle text-green-500',
+                    'warning': 'fas fa-exclamation-triangle text-yellow-500',
+                    'error': 'fas fa-times-circle text-red-500'
+                }[notification.type];
+                
+                item.innerHTML = `
+                    <div class="flex items-start">
+                        <i class="${iconClass} mr-3 mt-1"></i>
+                        <div class="flex-1">
+                            <p class="font-medium text-gray-900 text-sm">${notification.title}</p>
+                            <p class="text-gray-600 text-sm mt-1">${notification.message}</p>
+                            <p class="text-gray-500 text-xs mt-2">${notification.time}</p>
+                        </div>
+                        ${!notification.read ? '<div class="w-2 h-2 bg-blue-500 rounded-full ml-2 mt-2"></div>' : ''}
+                    </div>
+                `;
+                
+                container.appendChild(item);
+            });
+        }
+
+        // 更新通知徽章
+        function updateNotificationBadge(notifications) {
+            const unreadCount = notifications.filter(n => !n.read).length;
+            const badge = document.getElementById('notificationBadge');
+            
+            if (unreadCount > 0) {
+                badge.textContent = unreadCount;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        // 设置事件监听器
+        function setupEventListeners() {
+            // 侧边栏切换
+            document.getElementById('sidebarToggle').addEventListener('click', toggleSidebar);
+            
+            // 用户菜单
+            document.getElementById('userMenuBtn').addEventListener('click', function(e) {
+                e.stopPropagation();
+                toggleDropdown('userDropdown');
+            });
+            
+            // 通知面板
+            document.getElementById('notificationBtn').addEventListener('click', function(e) {
+                e.stopPropagation();
+                togglePanel('notificationPanel');
+            });
+            
+            document.getElementById('closeNotifications').addEventListener('click', function() {
+                document.getElementById('notificationPanel').classList.add('hidden');
+            });
+            
+            // 帮助面板
+            document.getElementById('helpBtn').addEventListener('click', function(e) {
+                e.stopPropagation();
+                togglePanel('helpPanel');
+            });
+            
+            document.getElementById('closeHelp').addEventListener('click', function() {
+                document.getElementById('helpPanel').classList.add('hidden');
+            });
+            
+            // 全局搜索
+            document.getElementById('globalSearch').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    performGlobalSearch(this.value);
+                }
+            });
+            
+            // 点击外部关闭下拉菜单和面板
+            document.addEventListener('click', function() {
+                document.getElementById('userDropdown').classList.add('hidden');
+                document.getElementById('notificationPanel').classList.add('hidden');
+                document.getElementById('helpPanel').classList.add('hidden');
+            });
+        }
+
+        // 导航到指定页面
+        function navigateTo(page) {
+            if (page === currentPage) return;
+            
+            // 显示加载指示器
+            showLoading();
+            
+            // 更新导航状态
+            updateNavigation(page);
+            
+            // 加载页面
+            const iframe = document.getElementById('contentFrame');
+            iframe.src = `pages/${page}.html`;
+            
+            currentPage = page;
+            
+            // 更新浏览器历史
+            history.pushState({ page }, '', `#${page}`);
+        }
+
+        // 更新导航状态
+        function updateNavigation(page) {
+            // 移除所有活动状态
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+                const icon = item.querySelector('i');
+                const text = item.querySelector('span');
+                if (icon) icon.classList.remove('text-primary');
+                if (icon) icon.classList.add('text-gray-600');
+                if (text) text.classList.remove('text-gray-900', 'font-medium');
+                if (text) text.classList.add('text-gray-700');
+            });
+            
+            // 添加当前页面的活动状态
+            const activeItem = document.querySelector(`[data-page="${page}"]`);
+            if (activeItem) {
+                activeItem.classList.add('active');
+                const icon = activeItem.querySelector('i');
+                const text = activeItem.querySelector('span');
+                if (icon) {
+                    icon.classList.remove('text-gray-600');
+                    icon.classList.add('text-primary');
+                }
+                if (text) {
+                    text.classList.remove('text-gray-700');
+                    text.classList.add('text-gray-900', 'font-medium');
+                }
+            }
+        }
+
+        // 显示加载状态
+        function showLoading() {
+            document.getElementById('loadingIndicator').classList.remove('hidden');
+            document.getElementById('contentFrame').classList.add('hidden');
+            document.getElementById('errorState').classList.add('hidden');
+        }
+
+        // 隐藏加载状态
+        function hideLoading() {
+            document.getElementById('loadingIndicator').classList.add('hidden');
+            document.getElementById('contentFrame').classList.remove('hidden');
+        }
+
+        // iframe加载完成处理
+        function handleFrameLoad() {
+            hideLoading();
+        }
+
+        // iframe加载错误处理
+        function handleFrameError() {
+            document.getElementById('loadingIndicator').classList.add('hidden');
+            document.getElementById('contentFrame').classList.add('hidden');
+            document.getElementById('errorState').classList.remove('hidden');
+        }
+
+        // 重新加载当前页面
+        function reloadCurrentPage() {
+            navigateTo(currentPage);
+        }
+
+        // 切换侧边栏
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            
+            sidebarCollapsed = !sidebarCollapsed;
+            
+            if (sidebarCollapsed) {
+                sidebar.classList.add('w-16');
+                sidebar.classList.remove('w-64');
+                mainContent.classList.add('ml-16');
+                mainContent.classList.remove('ml-64');
+            } else {
+                sidebar.classList.add('w-64');
+                sidebar.classList.remove('w-16');
+                mainContent.classList.add('ml-64');
+                mainContent.classList.remove('ml-16');
+            }
+        }
+
+        // 切换下拉菜单
+        function toggleDropdown(dropdownId) {
+            const dropdown = document.getElementById(dropdownId);
+            dropdown.classList.toggle('hidden');
+        }
+
+        // 切换面板
+        function togglePanel(panelId) {
+            const panel = document.getElementById(panelId);
+            panel.classList.toggle('hidden');
+        }
+
+        // 响应式处理
+        function handleResize() {
+            const width = window.innerWidth;
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            
+            if (width < 1024) { // lg断点
+                sidebar.classList.add('hidden');
+                mainContent.classList.remove('ml-64', 'ml-16');
+                mainContent.classList.add('ml-0');
+            } else {
+                sidebar.classList.remove('hidden');
+                if (sidebarCollapsed) {
+                    mainContent.classList.add('ml-16');
+                    mainContent.classList.remove('ml-0', 'ml-64');
+                } else {
+                    mainContent.classList.add('ml-64');
+                    mainContent.classList.remove('ml-0', 'ml-16');
+                }
+            }
+        }
+
+        // 全局搜索
+        function performGlobalSearch(query) {
+            if (!query.trim()) return;
+            
+            // 这里可以实现全局搜索逻辑
+            showToast(`搜索功能开发中: "${query}"`);
+        }
+
+        // 上传文档
+        function uploadDocument() {
+            // 切换到工作台页面并触发上传
+            navigateTo('dashboard');
+            
+            // 等待页面加载后触发上传
+            setTimeout(() => {
+                const iframe = document.getElementById('contentFrame');
+                if (iframe.contentWindow && iframe.contentWindow.triggerUpload) {
+                    iframe.contentWindow.triggerUpload();
+                }
+            }, 500);
+        }
+
+        // 打开文档
+        function openDocument(docId) {
+            // 切换到阅读器页面
+            navigateTo('reader');
+            
+            // 传递文档ID参数
+            setTimeout(() => {
+                const iframe = document.getElementById('contentFrame');
+                iframe.src = `pages/reader.html?docId=${docId}`;
+            }, 100);
+        }
+
+        // 退出登录
+        function logout() {
+            if (confirm('确定要退出登录吗？')) {
+                localStorage.removeItem('isLoggedIn');
+                localStorage.removeItem('userInfo');
+                window.location.href = 'pages/login.html';
+            }
+        }
+
+        // 显示提示消息
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `fixed bottom-4 right-4 px-4 py-2 rounded-md text-white z-50 ${
+                type === 'success' ? 'bg-green-500' : 
+                type === 'error' ? 'bg-red-500' : 
+                type === 'warning' ? 'bg-yellow-500' : 'bg-blue-500'
+            }`;
+            toast.textContent = message;
+            
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+
+        // 处理浏览器后退/前进
+        window.addEventListener('popstate', function(event) {
+            if (event.state && event.state.page) {
+                navigateTo(event.state.page);
+            }
+        });
+
+        // 处理iframe内的消息通信
+        window.addEventListener('message', function(event) {
+            // 处理来自iframe的消息
+            if (event.data.type === 'navigate') {
+                navigateTo(event.data.page);
+            } else if (event.data.type === 'notification') {
+                showToast(event.data.message, event.data.level);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,46 @@
+server:
+  port: 10110
+
+spring:
+  application:
+    name: sc-user-service
+#  profiles:
+#    active: dev
+#  # 数据源配置（开发环境）
+#  datasource:
+#    driver-class-name: org.postgresql.Driver
+#    url: jdbc:postgresql://localhost:5432/scholar_assist?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+#    username: postgres
+#    password: 123456
+  # 禁用数据库初始化依赖检测
+#  sql:
+#    init:
+#      mode: never
+  config:
+    import:
+      - optional:nacos:sc-user.yaml?group=DEFAULT_GROUP
+      - optional:nacos:mybatis-plus.yaml?group=DEFAULT_GROUP
+      - optional:nacos:pgsql.yaml?group=DEFAULT_GROUP
+  cloud:
+    nacos:
+      config:
+        namespace: ede3834d-0b93-4b3b-960d-0f656975cc1d
+        server-addr: 127.0.0.1:8848
+      #          nacos服务注册
+      discovery:
+        server-addr: 127.0.0.1:8848
+        namespace: ede3834d-0b93-4b3b-960d-0f656975cc1d
+#        enabled: false  # 开发环境禁用Nacos
+
+## MyBatis Plus 配置
+#mybatis-plus:
+#  configuration:
+#    map-underscore-to-camel-case: true
+#    cache-enabled: false
+#    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+#  mapper-locations: classpath:mapper/*.xml
+#  type-aliases-package: com.zd.scuserservice.model.domain
+#  global-config:
+#    db-config:
+#      id-type: auto
+#    banner: false

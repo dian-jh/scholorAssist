@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zd.sccategoriesmanage.mapper.CategoryMapper">
+
+    <!-- 结果映射 -->
+    <resultMap id="BaseResultMap" type="com.zd.sccategoriesmanage.model.domain.Category">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="category_id" property="categoryId" jdbcType="VARCHAR"/>
+        <result column="user_id" property="userId" jdbcType="VARCHAR"/>
+        <result column="parent_id" property="parentId" jdbcType="VARCHAR"/>
+        <result column="name" property="name" jdbcType="VARCHAR"/>
+        <result column="description" property="description" jdbcType="VARCHAR"/>
+        <result column="sort_order" property="sortOrder" jdbcType="INTEGER"/>
+        <result column="document_count" property="documentCount" jdbcType="INTEGER"/>
+        <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
+        <result column="updated_at" property="updatedAt" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <!-- 基础字段 -->
+    <sql id="Base_Column_List">
+        id, category_id, user_id, parent_id, name, description, sort_order, 
+        document_count, created_at, updated_at
+    </sql>
+
+    <!-- 批量插入 -->
+    <insert id="batchInsert" parameterType="java.util.List">
+        INSERT INTO categories (
+            category_id, user_id, parent_id, name, description, sort_order,
+            document_count, created_at, updated_at
+        ) VALUES
+        <foreach collection="entities" item="entity" separator=",">
+            (
+                #{entity.categoryId}, #{entity.userId}, #{entity.parentId}, 
+                #{entity.name}, #{entity.description}, #{entity.sortOrder},
+                #{entity.documentCount}, #{entity.createdAt}, #{entity.updatedAt}
+            )
+        </foreach>
+    </insert>
+
+    <!-- 根据分类ID查询 -->
+    <select id="selectByCategoryId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM categories
+        WHERE category_id = #{categoryId}
+    </select>
+
+    <!-- 根据用户ID查询所有分类 -->
+    <select id="selectByUserId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM categories
+        WHERE user_id = #{userId}
+        ORDER BY sort_order ASC, created_at ASC
+    </select>
+
+    <!-- 根据父分类ID查询子分类 -->
+    <select id="selectByParentId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM categories
+        WHERE parent_id = #{parentId}
+        ORDER BY sort_order ASC, created_at ASC
+    </select>
+
+    <!-- 根据用户ID和父分类ID查询子分类 -->
+    <select id="selectByUserIdAndParentId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM categories
+        WHERE user_id = #{userId}
+        <choose>
+            <when test="parentId != null">
+                AND parent_id = #{parentId}
+            </when>
+            <otherwise>
+                AND parent_id IS NULL
+            </otherwise>
+        </choose>
+        ORDER BY sort_order ASC, created_at ASC
+    </select>
+
+    <!-- 更新分类文档数量 -->
+    <update id="updateDocumentCount">
+        UPDATE categories
+        SET document_count = #{documentCount},
+            updated_at = CURRENT_TIMESTAMP
+        WHERE category_id = #{categoryId}
+    </update>
+
+    <!-- 检查分类名称在同一父级下是否存在 -->
+    <select id="countByUserIdAndParentIdAndName" resultType="long">
+        SELECT COUNT(1)
+        FROM categories
+        WHERE user_id = #{userId}
+        <choose>
+            <when test="parentId != null">
+                AND parent_id = #{parentId}
+            </when>
+            <otherwise>
+                AND parent_id IS NULL
+            </otherwise>
+        </choose>
+        AND name = #{name}
+    </select>
+
+    <!-- 检查分类名称在同一父级下是否存在（排除指定分类） -->
+    <select id="countByUserIdAndParentIdAndNameExcludeId" resultType="long">
+        SELECT COUNT(1)
+        FROM categories
+        WHERE user_id = #{userId}
+        <choose>
+            <when test="parentId != null">
+                AND parent_id = #{parentId}
+            </when>
+            <otherwise>
+                AND parent_id IS NULL
+            </otherwise>
+        </choose>
+        AND name = #{name}
+        AND category_id != #{excludeCategoryId}
+    </select>
+
+    <!-- 根据分类ID删除分类 -->
+    <delete id="deleteByCategoryId">
+        DELETE FROM categories
+        WHERE category_id = #{categoryId}
+    </delete>
+
+    <!-- 根据分类ID更新分类信息 -->
+    <update id="updateByCategoryId">
+        UPDATE categories
+        <set>
+            <if test="category.name != null and category.name != ''">
+                name = #{category.name},
+            </if>
+            <if test="category.description != null">
+                description = #{category.description},
+            </if>
+            <if test="category.sortOrder != null">
+                sort_order = #{category.sortOrder},
+            </if>
+            <if test="category.parentId != null">
+                parent_id = #{category.parentId},
+            </if>
+            updated_at = CURRENT_TIMESTAMP
+        </set>
+        WHERE category_id = #{category.categoryId}
+    </update>
+
+    <!-- ==================== API接口所需SQL ====================  -->
+
+    <!-- 查询所有分类 -->
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM categories
+        ORDER BY sort_order ASC, created_at ASC
+    </select>
+
+    <!-- 检查分类名称在同一父级下是否存在（不限用户） -->
+    <select id="countByParentIdAndName" resultType="long">
+        SELECT COUNT(1)
+        FROM categories
+        <where>
+            <choose>
+                <when test="parentId != null">
+                    parent_id = #{parentId}
+                </when>
+                <otherwise>
+                    parent_id IS NULL
+                </otherwise>
+            </choose>
+            AND name = #{name}
+        </where>
+    </select>
+
+    <!-- 检查分类名称在同一父级下是否存在（排除指定分类，不限用户） -->
+    <select id="countByParentIdAndNameExcludeId" resultType="long">
+        SELECT COUNT(1)
+        FROM categories
+        <where>
+            <choose>
+                <when test="parentId != null">
+                    parent_id = #{parentId}
+                </when>
+                <otherwise>
+                    parent_id IS NULL
+                </otherwise>
+            </choose>
+            AND name = #{name}
+            AND category_id != #{excludeCategoryId}
+        </where>
+    </select>
+
+    <!-- 统计指定父分类下的子分类数量 -->
+    <select id="countByParentId" resultType="long">
+        SELECT COUNT(1)
+        FROM categories
+        WHERE parent_id = #{parentId}
+    </select>
+
+</mapper>

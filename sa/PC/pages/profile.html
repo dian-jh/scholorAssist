@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户设置 - 文献辅助阅读系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1763EA',
+                        'primary-dark': '#1451C7',
+                        background: '#F8FAFF'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .setting-section {
+            transition: all 0.2s ease-in-out;
+        }
+        
+        .setting-section:hover {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .avatar-upload {
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+        
+        .avatar-upload input[type="file"] {
+            position: absolute;
+            left: -9999px;
+        }
+        
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 48px;
+            height: 24px;
+        }
+        
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+        
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .slider {
+            background-color: #1763EA;
+        }
+        
+        input:checked + .slider:before {
+            transform: translateX(24px);
+        }
+    </style>
+</head>
+<body class="bg-background min-h-screen">
+    <!-- 顶部导航栏 -->
+    <nav class="bg-white shadow-sm border-b border-gray-200 fixed top-0 left-0 right-0 z-40">
+        <div class="px-6 py-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <a href="dashboard.html" class="text-gray-600 hover:text-primary">
+                        <i class="fas fa-arrow-left text-lg"></i>
+                    </a>
+                    <div class="flex items-center">
+                        <i class="fas fa-user-cog text-primary text-lg mr-3"></i>
+                        <h1 class="text-lg font-semibold text-gray-900">用户设置</h1>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <button id="saveSettings" class="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-lg text-sm font-medium">
+                        <i class="fas fa-save mr-2"></i>保存设置
+                    </button>
+                    
+                    <div class="relative">
+                        <button id="userMenuBtn" class="flex items-center space-x-2 text-gray-700 hover:text-primary">
+                            <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                                <i class="fas fa-user text-white text-sm"></i>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主内容区域 -->
+    <div class="pt-16 flex">
+        <!-- 侧边导航 -->
+        <div class="w-64 bg-white shadow-sm border-r border-gray-200 min-h-screen">
+            <div class="p-6">
+                <nav class="space-y-2">
+                    <a href="#profile" class="setting-nav-item active flex items-center px-3 py-2 text-sm font-medium text-primary bg-blue-50 rounded-md">
+                        <i class="fas fa-user mr-3 text-primary"></i>
+                        个人信息
+                    </a>
+                    <a href="#reading" class="setting-nav-item flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md">
+                        <i class="fas fa-book-open mr-3"></i>
+                        阅读偏好
+                    </a>
+                    <a href="#ai" class="setting-nav-item flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md">
+                        <i class="fas fa-robot mr-3"></i>
+                        AI设置
+                    </a>
+                    <a href="#system" class="setting-nav-item flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md">
+                        <i class="fas fa-cog mr-3"></i>
+                        系统设置
+                    </a>
+                    <a href="#data" class="setting-nav-item flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md">
+                        <i class="fas fa-database mr-3"></i>
+                        数据管理
+                    </a>
+                    <a href="#security" class="setting-nav-item flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md">
+                        <i class="fas fa-shield-alt mr-3"></i>
+                        安全设置
+                    </a>
+                    <a href="#about" class="setting-nav-item flex items-center px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-md">
+                        <i class="fas fa-info-circle mr-3"></i>
+                        关于系统
+                    </a>
+                </nav>
+            </div>
+        </div>
+
+        <!-- 设置内容区域 -->
+        <div class="flex-1 p-6">
+            <div class="max-w-4xl mx-auto">
+                <!-- 个人信息设置 -->
+                <div id="profile-section" class="setting-section bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h2 class="text-lg font-semibold text-gray-900">个人信息</h2>
+                        <p class="text-sm text-gray-600 mt-1">管理您的个人资料和账户信息</p>
+                    </div>
+                    
+                    <div class="p-6">
+                        <div class="flex items-start space-x-6">
+                            <!-- 头像上传 -->
+                            <div class="flex-shrink-0">
+                                <div class="avatar-upload">
+                                    <div class="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden">
+                                        <img id="avatarPreview" src="" alt="头像" class="w-full h-full object-cover hidden">
+                                        <i id="avatarIcon" class="fas fa-user text-3xl text-gray-400"></i>
+                                    </div>
+                                    <input type="file" id="avatarInput" accept="image/*">
+                                    <button onclick="document.getElementById('avatarInput').click()" 
+                                            class="mt-2 text-sm text-primary hover:text-primary-dark">
+                                        更换头像
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- 基本信息表单 -->
+                            <div class="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">用户名</label>
+                                    <input type="text" id="username" value="张三" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">邮箱</label>
+                                    <input type="email" id="email" value="zhangsan@example.com" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">手机号</label>
+                                    <input type="tel" id="phone" value="138****8888" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">职业</label>
+                                    <select id="occupation" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                        <option value="student">学生</option>
+                                        <option value="researcher" selected>研究员</option>
+                                        <option value="teacher">教师</option>
+                                        <option value="engineer">工程师</option>
+                                        <option value="other">其他</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="md:col-span-2">
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">个人简介</label>
+                                    <textarea id="bio" rows="3" placeholder="简单介绍一下自己..." 
+                                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">专注于人工智能和机器学习领域的研究，热爱阅读学术文献。</textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 阅读偏好设置 -->
+                <div id="reading-section" class="setting-section bg-white rounded-lg shadow-sm border border-gray-200 mb-6 hidden">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h2 class="text-lg font-semibold text-gray-900">阅读偏好</h2>
+                        <p class="text-sm text-gray-600 mt-1">自定义您的阅读体验</p>
+                    </div>
+                    
+                    <div class="p-6 space-y-6">
+                        <!-- PDF阅读设置 -->
+                        <div>
+                            <h3 class="text-base font-medium text-gray-900 mb-4">PDF阅读设置</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">默认缩放比例</label>
+                                    <select id="defaultZoom" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                        <option value="fit-width">适应宽度</option>
+                                        <option value="fit-page">适应页面</option>
+                                        <option value="100" selected>100%</option>
+                                        <option value="125">125%</option>
+                                        <option value="150">150%</option>
+                                        <option value="200">200%</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">页面布局</label>
+                                    <select id="pageLayout" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                        <option value="single" selected>单页</option>
+                                        <option value="continuous">连续页</option>
+                                        <option value="facing">对页</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">主题模式</label>
+                                    <select id="themeMode" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                        <option value="light" selected>浅色模式</option>
+                                        <option value="dark">深色模式</option>
+                                        <option value="sepia">护眼模式</option>
+                                        <option value="auto">跟随系统</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">字体大小调整</label>
+                                    <input type="range" id="fontSizeAdjust" min="80" max="150" value="100" 
+                                           class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                                    <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                        <span>80%</span>
+                                        <span id="fontSizeValue">100%</span>
+                                        <span>150%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 阅读行为设置 -->
+                        <div>
+                            <h3 class="text-base font-medium text-gray-900 mb-4">阅读行为</h3>
+                            <div class="space-y-4">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900">自动保存阅读进度</p>
+                                        <p class="text-sm text-gray-600">自动记录您的阅读位置</p>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="autoSaveProgress" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900">智能高亮</p>
+                                        <p class="text-sm text-gray-600">自动高亮重要内容</p>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="smartHighlight" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900">快速笔记</p>
+                                        <p class="text-sm text-gray-600">双击文本快速创建笔记</p>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="quickNote" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI设置 -->
+                <div id="ai-section" class="setting-section bg-white rounded-lg shadow-sm border border-gray-200 mb-6 hidden">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h2 class="text-lg font-semibold text-gray-900">AI设置</h2>
+                        <p class="text-sm text-gray-600 mt-1">配置AI助手的行为和偏好</p>
+                    </div>
+                    
+                    <div class="p-6 space-y-6">
+                        <!-- AI模型设置 -->
+                        <div>
+                            <h3 class="text-base font-medium text-gray-900 mb-4">AI模型配置</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">默认AI模型</label>
+                                    <select id="aiModel" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                        <option value="gpt-4" selected>GPT-4</option>
+                                        <option value="gpt-3.5">GPT-3.5</option>
+                                        <option value="claude">Claude</option>
+                                        <option value="local">本地模型</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">回答风格</label>
+                                    <select id="aiStyle" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                        <option value="academic" selected>学术风格</option>
+                                        <option value="casual">轻松风格</option>
+                                        <option value="detailed">详细解释</option>
+                                        <option value="concise">简洁明了</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">回答长度</label>
+                                    <select id="responseLength" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                        <option value="short">简短</option>
+                                        <option value="medium" selected>中等</option>
+                                        <option value="long">详细</option>
+                                        <option value="adaptive">自适应</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">语言偏好</label>
+                                    <select id="aiLanguage" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                        <option value="zh-CN" selected>中文</option>
+                                        <option value="en">English</option>
+                                        <option value="auto">自动检测</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- AI行为设置 -->
+                        <div>
+                            <h3 class="text-base font-medium text-gray-900 mb-4">AI行为偏好</h3>
+                            <div class="space-y-4">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900">智能问题建议</p>
+                                        <p class="text-sm text-gray-600">根据文档内容自动推荐问题</p>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="smartQuestions" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900">上下文记忆</p>
+                                        <p class="text-sm text-gray-600">AI记住之前的对话内容</p>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="contextMemory" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900">引用来源</p>
+                                        <p class="text-sm text-gray-600">AI回答时显示文档引用</p>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="showSources" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900">实时翻译</p>
+                                        <p class="text-sm text-gray-600">自动翻译外文文档内容</p>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="autoTranslate">
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 系统设置 -->
+                <div id="system-section" class="setting-section bg-white rounded-lg shadow-sm border border-gray-200 mb-6 hidden">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h2 class="text-lg font-semibold text-gray-900">系统设置</h2>
+                        <p class="text-sm text-gray-600 mt-1">配置系统行为和界面偏好</p>
+                    </div>
+                    
+                    <div class="p-6 space-y-6">
+                        <!-- 界面设置 -->
+                        <div>
+                            <h3 class="text-base font-medium text-gray-900 mb-4">界面设置</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">界面语言</label>
+                                    <select id="systemLanguage" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                        <option value="zh-CN" selected>简体中文</option>
+                                        <option value="zh-TW">繁体中文</option>
+                                        <option value="en">English</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">时区设置</label>
+                                    <select id="timezone" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                        <option value="Asia/Shanghai" selected>北京时间 (UTC+8)</option>
+                                        <option value="America/New_York">纽约时间 (UTC-5)</option>
+                                        <option value="Europe/London">伦敦时间 (UTC+0)</option>
+                                        <option value="Asia/Tokyo">东京时间 (UTC+9)</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">侧边栏默认状态</label>
+                                    <select id="sidebarDefault" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                        <option value="expanded" selected>展开</option>
+                                        <option value="collapsed">收起</option>
+                                        <option value="auto">自动</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">每页显示数量</label>
+                                    <select id="itemsPerPage" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                        <option value="10">10条</option>
+                                        <option value="20" selected>20条</option>
+                                        <option value="50">50条</option>
+                                        <option value="100">100条</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 通知设置 -->
+                        <div>
+                            <h3 class="text-base font-medium text-gray-900 mb-4">通知设置</h3>
+                            <div class="space-y-4">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900">桌面通知</p>
+                                        <p class="text-sm text-gray-600">允许系统发送桌面通知</p>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="desktopNotifications" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900">邮件通知</p>
+                                        <p class="text-sm text-gray-600">重要事件通过邮件通知</p>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="emailNotifications">
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900">声音提醒</p>
+                                        <p class="text-sm text-gray-600">操作完成时播放提示音</p>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="soundAlerts" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 数据管理 -->
+                <div id="data-section" class="setting-section bg-white rounded-lg shadow-sm border border-gray-200 mb-6 hidden">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h2 class="text-lg font-semibold text-gray-900">数据管理</h2>
+                        <p class="text-sm text-gray-600 mt-1">管理您的数据存储和备份</p>
+                    </div>
+                    
+                    <div class="p-6 space-y-6">
+                        <!-- 存储统计 -->
+                        <div>
+                            <h3 class="text-base font-medium text-gray-900 mb-4">存储使用情况</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div class="bg-blue-50 rounded-lg p-4">
+                                    <div class="flex items-center">
+                                        <i class="fas fa-file-pdf text-blue-600 text-lg mr-3"></i>
+                                        <div>
+                                            <p class="text-sm font-medium text-blue-900">PDF文档</p>
+                                            <p class="text-lg font-semibold text-blue-600">2.3 GB</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="bg-green-50 rounded-lg p-4">
+                                    <div class="flex items-center">
+                                        <i class="fas fa-sticky-note text-green-600 text-lg mr-3"></i>
+                                        <div>
+                                            <p class="text-sm font-medium text-green-900">笔记数据</p>
+                                            <p class="text-lg font-semibold text-green-600">156 MB</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="bg-purple-50 rounded-lg p-4">
+                                    <div class="flex items-center">
+                                        <i class="fas fa-comments text-purple-600 text-lg mr-3"></i>
+                                        <div>
+                                            <p class="text-sm font-medium text-purple-900">AI对话</p>
+                                            <p class="text-lg font-semibold text-purple-600">89 MB</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 数据操作 -->
+                        <div>
+                            <h3 class="text-base font-medium text-gray-900 mb-4">数据操作</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <button class="flex items-center justify-center px-4 py-3 border border-gray-300 rounded-md hover:bg-gray-50">
+                                    <i class="fas fa-download text-blue-600 mr-2"></i>
+                                    <span class="text-sm font-medium">导出所有数据</span>
+                                </button>
+                                
+                                <button class="flex items-center justify-center px-4 py-3 border border-gray-300 rounded-md hover:bg-gray-50">
+                                    <i class="fas fa-upload text-green-600 mr-2"></i>
+                                    <span class="text-sm font-medium">导入数据</span>
+                                </button>
+                                
+                                <button class="flex items-center justify-center px-4 py-3 border border-gray-300 rounded-md hover:bg-gray-50">
+                                    <i class="fas fa-cloud-upload-alt text-purple-600 mr-2"></i>
+                                    <span class="text-sm font-medium">备份到云端</span>
+                                </button>
+                                
+                                <button class="flex items-center justify-center px-4 py-3 border border-red-300 text-red-600 rounded-md hover:bg-red-50">
+                                    <i class="fas fa-trash mr-2"></i>
+                                    <span class="text-sm font-medium">清空所有数据</span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- 自动备份设置 -->
+                        <div>
+                            <h3 class="text-base font-medium text-gray-900 mb-4">自动备份</h3>
+                            <div class="space-y-4">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900">启用自动备份</p>
+                                        <p class="text-sm text-gray-600">定期自动备份您的数据</p>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="autoBackup" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">备份频率</label>
+                                        <select id="backupFrequency" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                            <option value="daily" selected>每日</option>
+                                            <option value="weekly">每周</option>
+                                            <option value="monthly">每月</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">保留份数</label>
+                                        <select id="backupRetention" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                            <option value="5">5份</option>
+                                            <option value="10" selected>10份</option>
+                                            <option value="30">30份</option>
+                                            <option value="unlimited">不限制</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 安全设置 -->
+                <div id="security-section" class="setting-section bg-white rounded-lg shadow-sm border border-gray-200 mb-6 hidden">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h2 class="text-lg font-semibold text-gray-900">安全设置</h2>
+                        <p class="text-sm text-gray-600 mt-1">保护您的账户和数据安全</p>
+                    </div>
+                    
+                    <div class="p-6 space-y-6">
+                        <!-- 密码设置 -->
+                        <div>
+                            <h3 class="text-base font-medium text-gray-900 mb-4">密码管理</h3>
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">当前密码</label>
+                                    <input type="password" id="currentPassword" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">新密码</label>
+                                    <input type="password" id="newPassword" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">确认新密码</label>
+                                    <input type="password" id="confirmPassword" 
+                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                                </div>
+                                
+                                <button class="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-md text-sm font-medium">
+                                    更新密码
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- 两步验证 -->
+                        <div>
+                            <h3 class="text-base font-medium text-gray-900 mb-4">两步验证</h3>
+                            <div class="space-y-4">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900">启用两步验证</p>
+                                        <p class="text-sm text-gray-600">为您的账户添加额外的安全保护</p>
+                                    </div>
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="twoFactorAuth">
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                
+                                <div class="bg-yellow-50 border border-yellow-200 rounded-md p-4">
+                                    <div class="flex">
+                                        <i class="fas fa-exclamation-triangle text-yellow-600 mr-2 mt-0.5"></i>
+                                        <div>
+                                            <p class="text-sm font-medium text-yellow-800">安全提醒</p>
+                                            <p class="text-sm text-yellow-700 mt-1">启用两步验证后，登录时需要额外的验证码。请确保您的手机号码是最新的。</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 登录记录 -->
+                        <div>
+                            <h3 class="text-base font-medium text-gray-900 mb-4">登录记录</h3>
+                            <div class="space-y-3">
+                                <div class="flex items-center justify-between py-3 border-b border-gray-200">
+                                    <div class="flex items-center">
+                                        <i class="fas fa-desktop text-gray-400 mr-3"></i>
+                                        <div>
+                                            <p class="text-sm font-medium text-gray-900">Windows PC</p>
+                                            <p class="text-sm text-gray-600">192.168.1.100 • 北京</p>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-sm text-gray-900">当前会话</p>
+                                        <p class="text-sm text-gray-600">2小时前</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex items-center justify-between py-3 border-b border-gray-200">
+                                    <div class="flex items-center">
+                                        <i class="fas fa-mobile-alt text-gray-400 mr-3"></i>
+                                        <div>
+                                            <p class="text-sm font-medium text-gray-900">iPhone</p>
+                                            <p class="text-sm text-gray-600">10.0.0.1 • 上海</p>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-sm text-gray-900">已退出</p>
+                                        <p class="text-sm text-gray-600">1天前</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 关于系统 -->
+                <div id="about-section" class="setting-section bg-white rounded-lg shadow-sm border border-gray-200 mb-6 hidden">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h2 class="text-lg font-semibold text-gray-900">关于系统</h2>
+                        <p class="text-sm text-gray-600 mt-1">系统信息和版本详情</p>
+                    </div>
+                    
+                    <div class="p-6 space-y-6">
+                        <!-- 系统信息 -->
+                        <div class="text-center">
+                            <div class="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-book-reader text-white text-2xl"></i>
+                            </div>
+                            <h3 class="text-xl font-semibold text-gray-900 mb-2">文献辅助阅读系统</h3>
+                            <p class="text-gray-600 mb-4">Literature Assisted Reading System</p>
+                            <div class="inline-flex items-center px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full">
+                                <i class="fas fa-check-circle mr-1"></i>
+                                版本 1.0.0
+                            </div>
+                        </div>
+                        
+                        <!-- 功能特性 -->
+                        <div>
+                            <h4 class="text-base font-medium text-gray-900 mb-3">核心功能</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div class="flex items-center">
+                                    <i class="fas fa-file-pdf text-red-500 mr-2"></i>
+                                    <span class="text-sm text-gray-700">PDF文档阅读</span>
+                                </div>
+                                <div class="flex items-center">
+                                    <i class="fas fa-robot text-blue-500 mr-2"></i>
+                                    <span class="text-sm text-gray-700">AI智能问答</span>
+                                </div>
+                                <div class="flex items-center">
+                                    <i class="fas fa-sticky-note text-yellow-500 mr-2"></i>
+                                    <span class="text-sm text-gray-700">智能笔记</span>
+                                </div>
+                                <div class="flex items-center">
+                                    <i class="fas fa-tags text-green-500 mr-2"></i>
+                                    <span class="text-sm text-gray-700">分类管理</span>
+                                </div>
+                                <div class="flex items-center">
+                                    <i class="fas fa-search text-purple-500 mr-2"></i>
+                                    <span class="text-sm text-gray-700">全文搜索</span>
+                                </div>
+                                <div class="flex items-center">
+                                    <i class="fas fa-cloud text-indigo-500 mr-2"></i>
+                                    <span class="text-sm text-gray-700">云端同步</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 技术信息 -->
+                        <div>
+                            <h4 class="text-base font-medium text-gray-900 mb-3">技术信息</h4>
+                            <div class="bg-gray-50 rounded-lg p-4">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                    <div>
+                                        <span class="font-medium text-gray-700">前端框架：</span>
+                                        <span class="text-gray-600">HTML5 + Tailwind CSS</span>
+                                    </div>
+                                    <div>
+                                        <span class="font-medium text-gray-700">AI模型：</span>
+                                        <span class="text-gray-600">GPT-4, Claude</span>
+                                    </div>
+                                    <div>
+                                        <span class="font-medium text-gray-700">PDF引擎：</span>
+                                        <span class="text-gray-600">PDF.js</span>
+                                    </div>
+                                    <div>
+                                        <span class="font-medium text-gray-700">数据存储：</span>
+                                        <span class="text-gray-600">本地 + 云端</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 联系信息 -->
+                        <div>
+                            <h4 class="text-base font-medium text-gray-900 mb-3">联系我们</h4>
+                            <div class="space-y-2 text-sm">
+                                <div class="flex items-center">
+                                    <i class="fas fa-envelope text-gray-400 mr-2"></i>
+                                    <span class="text-gray-600">support@literaturereader.com</span>
+                                </div>
+                                <div class="flex items-center">
+                                    <i class="fas fa-globe text-gray-400 mr-2"></i>
+                                    <span class="text-gray-600">www.literaturereader.com</span>
+                                </div>
+                                <div class="flex items-center">
+                                    <i class="fas fa-phone text-gray-400 mr-2"></i>
+                                    <span class="text-gray-600">400-123-4567</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 操作按钮 -->
+                        <div class="flex space-x-3">
+                            <button class="flex-1 bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-md text-sm font-medium">
+                                检查更新
+                            </button>
+                            <button class="flex-1 border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-md text-sm font-medium">
+                                用户手册
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 页面加载时初始化
+        window.addEventListener('load', function() {
+            // 检查登录状态
+            if (!localStorage.getItem('isLoggedIn')) {
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            initializeSettings();
+            loadUserSettings();
+            initializeEventListeners();
+        });
+
+        // 初始化设置
+        function initializeSettings() {
+            // 设置字体大小滑块事件
+            const fontSizeSlider = document.getElementById('fontSizeAdjust');
+            const fontSizeValue = document.getElementById('fontSizeValue');
+            
+            if (fontSizeSlider && fontSizeValue) {
+                fontSizeSlider.addEventListener('input', function() {
+                    fontSizeValue.textContent = this.value + '%';
+                });
+            }
+            
+            // 头像上传预览
+            const avatarInput = document.getElementById('avatarInput');
+            if (avatarInput) {
+                avatarInput.addEventListener('change', function(e) {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            const preview = document.getElementById('avatarPreview');
+                            const icon = document.getElementById('avatarIcon');
+                            if (preview && icon) {
+                                preview.src = e.target.result;
+                                preview.classList.remove('hidden');
+                                icon.classList.add('hidden');
+                            }
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+            }
+        }
+
+        // 加载用户设置
+        function loadUserSettings() {
+            // 从localStorage加载设置，如果没有则使用默认值
+            const settings = JSON.parse(localStorage.getItem('userSettings') || '{}');
+            
+            // 应用设置到表单
+            Object.keys(settings).forEach(key => {
+                const element = document.getElementById(key);
+                if (element) {
+                    if (element.type === 'checkbox') {
+                        element.checked = settings[key];
+                    } else {
+                        element.value = settings[key];
+                    }
+                }
+            });
+        }
+
+        // 初始化事件监听器
+        function initializeEventListeners() {
+            // 导航切换
+            document.querySelectorAll('.setting-nav-item').forEach(item => {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const target = this.getAttribute('href').substring(1);
+                    switchSection(target);
+                    
+                    // 更新导航状态
+                    document.querySelectorAll('.setting-nav-item').forEach(nav => {
+                        nav.classList.remove('active', 'text-primary', 'bg-blue-50');
+                        nav.classList.add('text-gray-600', 'hover:text-gray-900', 'hover:bg-gray-50');
+                    });
+                    
+                    this.classList.add('active', 'text-primary', 'bg-blue-50');
+                    this.classList.remove('text-gray-600', 'hover:text-gray-900', 'hover:bg-gray-50');
+                });
+            });
+
+            // 保存设置
+            const saveBtn = document.getElementById('saveSettings');
+            if (saveBtn) {
+                saveBtn.addEventListener('click', saveAllSettings);
+            }
+        }
+
+        // 切换设置区域
+        function switchSection(sectionName) {
+            // 隐藏所有区域
+            document.querySelectorAll('[id$="-section"]').forEach(section => {
+                section.classList.add('hidden');
+            });
+            
+            // 显示目标区域
+            const targetSection = document.getElementById(sectionName + '-section');
+            if (targetSection) {
+                targetSection.classList.remove('hidden');
+            }
+        }
+
+        // 保存所有设置
+        function saveAllSettings() {
+            const settings = {};
+            
+            // 收集所有表单数据
+            const formElements = document.querySelectorAll('input, select, textarea');
+            formElements.forEach(element => {
+                if (element.id) {
+                    if (element.type === 'checkbox') {
+                        settings[element.id] = element.checked;
+                    } else if (element.type !== 'file' && element.type !== 'password') {
+                        settings[element.id] = element.value;
+                    }
+                }
+            });
+            
+            // 保存到localStorage
+            localStorage.setItem('userSettings', JSON.stringify(settings));
+            
+            // 显示成功消息
+            showToast('设置已保存');
+            
+            // 这里可以添加向服务器同步设置的逻辑
+            console.log('Settings saved:', settings);
+        }
+
+        // 显示提示消息
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `fixed top-20 right-4 px-4 py-2 rounded-md text-white z-50 ${
+                type === 'success' ? 'bg-green-500' : 'bg-red-500'
+            }`;
+            toast.textContent = message;
+            
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+
+        // 重置设置
+        function resetSettings() {
+            if (confirm('确定要重置所有设置吗？这将清除您的个人偏好设置。')) {
+                localStorage.removeItem('userSettings');
+                location.reload();
+            }
+        }
+
+        // 导出设置
+        function exportSettings() {
+            const settings = localStorage.getItem('userSettings');
+            if (settings) {
+                const blob = new Blob([settings], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'user-settings.json';
+                a.click();
+                URL.revokeObjectURL(url);
+                showToast('设置已导出');
+            } else {
+                showToast('没有可导出的设置', 'error');
+            }
+        }
+
+        // 导入设置
+        function importSettings() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        try {
+                            const settings = JSON.parse(e.target.result);
+                            localStorage.setItem('userSettings', JSON.stringify(settings));
+                            loadUserSettings();
+                            showToast('设置已导入');
+                        } catch (error) {
+                            showToast('导入失败，文件格式错误', 'error');
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            };
+            input.click();
+        }
+    </script>
+</body>
+</html>
