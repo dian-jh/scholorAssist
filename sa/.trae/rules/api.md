@@ -1,6 +1,4 @@
 ---
-description: 
-globs: src/api/*.js
 alwaysApply: false
 ---
 #说明

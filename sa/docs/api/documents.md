@@ -8,8 +8,8 @@
 
 ## 🔗 基础信息
 
-- **基础 URL：** `/api/documents`
-- **服务端口：** `10150` (参考 `application.yaml`)
+- **基础 URL：** `/api/documents` (文档管理) / `/api/files` (文件访问)
+-  **服务端口：** `10140` (参考 `application.yaml`)
 - **认证方式：** Header 中需携带 Token (参考 `UserContextUtil`)
 - **数据格式：**
   - 请求体：`multipart/form-data` (上传) 或 `application/json` (其他)
@@ -145,33 +145,36 @@
 
 - `fileUrl`: 前端 PDF 阅读器可以直接使用这个 URL 加载文件流。
 
-### 4. 获取文献文件流 (预览/下载)
+- ### 4. 获取文献文件流 (预览/下载)
 
-**接口名称：** 获取 PDF 文件流
+  **接口名称：** 获取 PDF 文件流 (Stream/Bytes)
 
-**接口地址：** `/api/documents/{id}/file`
+  **接口地址：** `/api/files/documents/{id}/bytes`
 
-**请求方式：** `GET`
+  **请求方式：** `GET`
 
-#### ⚙️ 功能说明
+  #### ⚙️ 功能说明
 
-这是专门为 **PDF.js** 或浏览器原生预览器设计的接口。
+  这是专门为前端组件（如 **PDF.js**）获取二进制流设计的接口。
 
-- 它支持 HTTP `Range` 头，允许断点续传和分片加载（对于大体积 PDF 非常重要，能极大提升首屏加载速度）。
-- **权限控制**：不同于直接访问静态资源服务器（Nginx），该接口经过了 Spring Security 拦截链，确保只有拥有权限的用户才能下载/预览该文件。
+  - **差异说明**：与普通下载不同，此接口返回 `application/octet-stream`，不强制浏览器下载，适合前端通过 AJAX/Fetch 获取后转为 `Blob` 对象进行渲染。
+  - **权限控制**：该接口位于 `FileController`，独立于文档元数据管理，确保了文件访问的安全性。
+  - **断点续传**：支持 HTTP `Range` 头，允许分片加载大文件。
 
-#### 📥 请求参数 (Path & Header)
+  #### 📥 请求参数 (Path & Header)
 
-| 参数名            | 位置   | 必填 | 说明                                                    |
-| ----------------- | ------ | ---- | ------------------------------------------------------- |
-| **id**            | Path   | ✅ 是 | 文献 ID                                                 |
-| **Range**         | Header | ❌ 否 | 字节范围 (例如 `bytes=0-1023`)，通常由 PDF 插件自动发送 |
-| **Authorization** | Header | ✅ 是 | Bearer Token                                            |
+  | 参数名            | 位置   | 必填 | 说明                                                   |
+  | ----------------- | ------ | ---- | ------------------------------------------------------ |
+  | **id**            | Path   | ✅ 是 | 文献 ID (对应代码中的 `documentId`)                    |
+  | **Range**         | Header | ❌ 否 | 字节范围 (例如 `bytes=0-1023`)，PDF 插件通常会自动发送 |
+  | **Authorization** | Header | ✅ 是 | Bearer Token                                           |
 
-#### 📤 响应内容
+  #### 📤 响应内容
 
-- **Content-Type**: `application/pdf`
-- **Body**: 二进制文件流
+  - **Content-Type**: `application/octet-stream`
+  - **Body**: 二进制文件流
+
+  > **补充接口**：如果需要浏览器直接打开预览（Inline Preview），可以使用 `/api/files/documents/{id}/download`，该接口会返回 `application/pdf` 和 `Content-Disposition: inline`。
 
 ### 5. 修改文献信息
 

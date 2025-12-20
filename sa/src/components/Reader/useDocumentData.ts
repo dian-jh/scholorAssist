@@ -1,11 +1,12 @@
 import { getDocumentBytes } from '@/api/DocumentApi'
-import { getNotesList, type Note as ApiNote } from '@/api/NotesApi'
+import { getNotesList } from '@/api/NotesApi'
+import type { NoteDTO } from '@/types/note'
 
 export interface DocumentCompositeData {
   docId: string
   bytes: ArrayBuffer
   blobUrl: string
-  notes: ApiNote[]
+  notes: NoteDTO[]
   fetchedAt: number
 }
 
@@ -44,13 +45,13 @@ export async function fetchDocumentComposite(
     // 并行拉取，缩短总耗时
     const [bytes, notesResp] = await Promise.all([
       getDocumentBytes(docId),
-      getNotesList({ document_id: docId, page: 1, pageSize: options?.pageSize ?? 200 })
+      getNotesList({ documentId: docId, page: 1, pageSize: options?.pageSize ?? 200 })
     ])
 
     const blob = new Blob([bytes], { type: 'application/pdf' })
     const blobUrl = URL.createObjectURL(blob)
 
-    const notes = notesResp?.data ?? []
+    const notes = notesResp?.data?.records ?? []
 
     const result: DocumentCompositeData = {
       docId,

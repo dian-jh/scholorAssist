@@ -8,6 +8,9 @@
       aria-label="文本操作浮动框"
     >
       <div class="bubble-content">
+        <button class="bubble-btn" @click="$emit('highlight')" title="高亮文本">
+          🖍️ 高亮
+        </button>
         <button class="bubble-btn" @click="$emit('add-note')" title="添加笔记">
           📝 添加笔记
         </button>
@@ -31,6 +34,7 @@ interface Props {
 }
 defineProps<Props>()
 defineEmits<{
+  'highlight': []
   'add-note': []
   'ask-ai': []
   'copy': []

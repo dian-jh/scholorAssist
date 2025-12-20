@@ -15,11 +15,15 @@
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",
+    "@types/markdown-it": "^14.1.2",
+    "@types/uuid": "^10.0.0",
     "axios": "^1.6.2",
     "element-plus": "^2.4.4",
+    "markdown-it": "^14.1.0",
     "pdfjs-dist": "^5.4.394",
     "pinia": "^2.1.7",
     "splitpanes": "^4.0.4",
+    "uuid": "^13.0.0",
     "vue": "^3.4.0",
     "vue-router": "^4.2.5"
   },

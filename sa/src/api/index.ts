@@ -22,7 +22,9 @@ interface PendingRequest {
 
 // 创建axios实例
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api',
+  // 开发环境下使用相对路径 /api 以触发 Vite 代理
+  // 生产环境下使用环境变量配置的完整 URL
+  baseURL: import.meta.env.DEV ? '/api' : (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api'),
   timeout: 10000,
   headers: {
     // 移除默认的Content-Type设置，让请求拦截器根据请求类型动态设置

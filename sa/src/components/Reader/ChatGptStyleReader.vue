@@ -128,6 +128,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import type { StyleValue } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { 
@@ -144,7 +145,7 @@ import PdfViewer from './PdfViewer.vue'
 import AiChatPanel from './AiChatPanel.vue'
 
 import type { MockDocument } from '@/api/mockManager'
-import { ReaderLayoutConfig, getMainWidth, getMainHeight, getSidebarWidths } from '@/views/readerLayoutConfig'
+import { type ReaderLayoutConfig, getMainWidth, getMainHeight, getSidebarWidths } from '@/views/readerLayoutConfig'
 
 // Props
 interface Props {
@@ -186,7 +187,7 @@ const readerStyleVars = computed(() => {
   }
 })
 
-const mainContentStyle = computed(() => {
+const mainContentStyle = computed<StyleValue>(() => {
   return {
     display: 'flex',
     flexDirection: 'column'

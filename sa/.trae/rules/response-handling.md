@@ -1,10 +1,6 @@
 ---
-description: "前端统一响应处理指南 - 适用于Vue3 + TypeScript项目"
-globs:
-  - "src/**"
 alwaysApply: true
 ---
-
 # 🔄 前端统一响应处理指南
 
 ## 📋 概述
@@ -294,6 +290,11 @@ async function handleSpecialCases() {
 ### 5. TypeScript类型安全
 
 ```typescript
+// ✅ 推荐：使用 import type 导入DTO
+import type { UserDTO } from '@/types/user'
+// ❌ 避免：直接导入可能导致循环依赖
+// import { UserDTO } from '@/types/user'
+
 // ✅ 类型安全的API调用
 interface CreateDocumentParams {
   title: string

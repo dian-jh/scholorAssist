@@ -1,5 +1,5 @@
 import type { ApiResponse } from './index'
-import type { AiChatResponse, AiStreamChunk } from './AiApi'
+import type { AiChatResponse, AiStreamChunk } from '@/types/ai'
 
 // 响应数据校验接口
 export interface ResponseValidator<T> {

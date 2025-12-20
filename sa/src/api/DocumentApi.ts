@@ -192,8 +192,7 @@ export function getDocumentFileUrl(id: string): string {
  * 请求方式：GET
  */
 export function getDocumentBytes(id: string): Promise<ArrayBuffer> {
-  // 统一通过网关路由，避免生产环境直接跨域到文献服务端口
-  // 注意：axios 已配置 baseURL = .../api，因此这里不再加 /api 前缀
+  // 修正：网关路由前缀为 /files，完整路径为 /api/files/documents/{id}/bytes
   return getArrayBuffer(`/files/documents/${id}/bytes`)
 }
 

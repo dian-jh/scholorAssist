@@ -1,7 +1,5 @@
 ---
-description: 
-globs: src/**/*.vue
-alwaysApply: false
+alwaysApply: true
 ---
 ---
 description: This rule provides best practices and coding standards for Vue 3 projects, covering code organization, performance, security, testing, tooling, and common pitfalls to ensure maintainable and efficient applications. It aims to guide developers in writing high-quality Vue 3 code.
@@ -102,6 +100,7 @@ globs: *.vue
 
 - **Vue 3 Specific Recommendations**:
     - **TypeScript**: Use TypeScript for improved type safety and code maintainability. Define component props and emits with type annotations.
+    - **Type-Only Imports**: Always use `import type { ... }` when importing interfaces or types. This prevents runtime circular dependencies and allows build tools to properly elide type-only imports.
     - **Teleport**: Use the `Teleport` component to render content outside the component's DOM hierarchy, useful for modals and tooltips.
     - **Suspense**: Use the `Suspense` component to handle asynchronous dependencies gracefully, providing fallback content while waiting for data to load.
 

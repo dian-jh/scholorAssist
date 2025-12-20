@@ -41,12 +41,13 @@
           <div class="note-header">
             <div class="note-meta">
               <el-tag 
-                :type="getNoteTypeColor(note.type)" 
+                v-if="note.tags && note.tags.length > 0"
+                :type="getTagColor(note.tags[0])" 
                 size="small"
               >
-                {{ getNoteTypeLabel(note.type) }}
+                {{ note.tags[0] }}
               </el-tag>
-              <span class="note-page">第{{ note.page_number }}页</span>
+              <span class="note-page" v-if="getPageNumber(note.coord)">第{{ getPageNumber(note.coord) }}页</span>
             </div>
             <div class="note-actions">
               <el-dropdown @command="handleNoteAction">
@@ -64,15 +65,15 @@
           </div>
           
           <div class="note-content">
-            <p class="note-text">{{ note.content }}</p>
-            <div class="note-highlight" v-if="note.highlight_data?.text">
+            <p class="note-text" v-if="note.content">{{ note.content }}</p>
+            <div class="note-highlight" v-if="note.referenceText">
               <el-icon><EditPen /></el-icon>
-              <span>"{{ note.highlight_data?.text }}"</span>
+              <span>"{{ note.referenceText }}"</span>
             </div>
           </div>
           
           <div class="note-footer">
-            <span class="note-time">{{ formatTime(note.createdAt) }}</span>
+            <span class="note-time">{{ formatTime(note.createTime) }}</span>
           </div>
         </div>
       </div>
@@ -112,33 +113,6 @@
       :before-close="handleDialogClose"
     >
       <el-form :model="newNote" label-width="80px">
-        <el-form-item label="标题">
-          <el-input 
-            v-model="newNote.title" 
-            placeholder="请输入笔记标题（可选）"
-            maxlength="100"
-            show-word-limit
-          />
-        </el-form-item>
-        
-        <el-form-item label="笔记类型">
-          <el-select v-model="newNote.type" placeholder="选择类型">
-            <el-option label="重点标记" value="highlight" />
-            <el-option label="个人想法" value="thought" />
-            <el-option label="问题疑惑" value="question" />
-            <el-option label="总结归纳" value="summary" />
-          </el-select>
-        </el-form-item>
-        
-        <el-form-item label="页码">
-          <el-input-number 
-            v-model="newNote.page" 
-            :min="1" 
-            :max="999"
-            controls-position="right"
-          />
-        </el-form-item>
-        
         <el-form-item label="笔记内容">
           <el-input
             v-model="newNote.content"
@@ -150,11 +124,12 @@
           />
         </el-form-item>
         
-        <el-form-item label="引用文本" v-if="newNote.type === 'highlight'">
+        <el-form-item label="引用文本" v-if="newNote.referenceText">
           <el-input
-            v-model="newNote.highlightText"
+            v-model="newNote.referenceText"
             type="textarea"
             :rows="2"
+            disabled
             placeholder="引用的原文内容..."
           />
         </el-form-item>
@@ -182,6 +157,10 @@
             + 添加标签
           </el-button>
         </el-form-item>
+
+        <el-form-item label="颜色">
+           <el-color-picker v-model="newNote.color" />
+        </el-form-item>
       </el-form>
       
       <template #footer>
@@ -195,7 +174,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
   Search, 
@@ -204,18 +183,17 @@ import {
   MoreFilled 
 } from '@element-plus/icons-vue'
 import { 
-  getNotesList, 
+  searchNotes, 
   createNote as createNoteApi, 
   updateNote as updateNoteApi, 
   deleteNote as deleteNoteApi,
-  type Note as ApiNote
 } from '@/api/NotesApi'
-// 复合加载器：并发获取字节流与笔记，自动请求合并与缓存
-import { fetchDocumentComposite } from './useDocumentData'
+import type { NoteDTO, NoteCreateRequest } from '@/types/note'
 
 // Props
 interface Props {
   documentId?: string
+  notes?: NoteDTO[] // 从父组件传入的笔记列表
 }
 
 const props = defineProps<Props>()
@@ -226,14 +204,8 @@ const emit = defineEmits<{
   noteCreate: [content: string]
   noteUpdate: [noteId: string]
   noteDelete: [noteId: string]
+  'refresh-notes': []
 }>()
-
-// 笔记类型定义（扩展API类型）
-interface Note extends Omit<ApiNote, 'created_at' | 'updated_at'> {
-  type: 'highlight' | 'thought' | 'question' | 'summary'
-  createdAt: Date
-  updatedAt: Date
-}
 
 // 响应式数据
 const searchQuery = ref('')
@@ -242,16 +214,15 @@ const selectedNoteId = ref('')
 const showCreateDialog = ref(false)
 const showEditDialog = ref(false)
 const loading = ref(false)
-const notes = ref<Note[]>([])
-const editingNote = ref<Note | null>(null)
+// const notes = ref<NoteDTO[]>([]) // 移除内部 notes 状态，使用 props.notes
+const editingNote = ref<NoteDTO | null>(null)
 
 const newNote = ref({
-  type: 'thought' as Note['type'],
-  title: '',
   content: '',
-  highlightText: '',
-  page: 1,
-  tags: [] as string[]
+  referenceText: '',
+  coord: '{}',
+  tags: [] as string[],
+  color: '#FFCC00'
 })
 
 // 标签输入管理
@@ -278,73 +249,45 @@ const removeTag = (tag: string) => {
   newNote.value.tags = newNote.value.tags.filter(t => t !== tag)
 }
 
-// 分类配置
+// 分类配置 (映射为标签筛选)
 const categories = [
   { key: 'all', label: '全部' },
-  { key: 'highlight', label: '标记' },
-  { key: 'thought', label: '想法' },
-  { key: 'question', label: '问题' },
-  { key: 'summary', label: '总结' }
+  { key: '重点', label: '重点' },
+  { key: '疑问', label: '疑问' },
+  { key: '总结', label: '总结' }
 ]
 
 // 计算属性
 const filteredNotes = computed(() => {
-  let filtered = notes.value
+  let filtered = props.notes || []
 
-  // 按分类筛选
+  // 按分类筛选 (标签)
   if (activeCategory.value !== 'all') {
-    filtered = filtered.filter(note => note.type === activeCategory.value)
+    filtered = filtered.filter(note => note.tags && note.tags.includes(activeCategory.value))
   }
 
   // 按搜索关键词筛选
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
     filtered = filtered.filter(note => 
-      note.content.toLowerCase().includes(query) ||
-      note.title.toLowerCase().includes(query) ||
-      (note.highlight_data?.text && note.highlight_data.text.toLowerCase().includes(query))
+      (note.content && note.content.toLowerCase().includes(query)) ||
+      (note.referenceText && note.referenceText.toLowerCase().includes(query))
     )
   }
 
-  // 按创建时间倒序排列
-  return filtered.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+  // 按创建时间倒序排列 (假设 createTime 是字符串)
+  return filtered.slice().sort((a, b) => new Date(b.createTime).getTime() - new Date(a.createTime).getTime())
 })
 
-// 监听文档ID变化，重新加载笔记
-watch(() => props.documentId, (newDocumentId) => {
-  if (newDocumentId) {
-    loadNotes()
-  }
-}, { immediate: true })
-
 // 方法
-async function loadNotes() {
-  if (!props.documentId) return
-  loading.value = true
-  try {
-    // 使用复合加载器以便与阅读器的加载去重合并
-    const composite = await fetchDocumentComposite(props.documentId, { pageSize: 200 })
-    const apiNotes: ApiNote[] = composite.notes || []
-    notes.value = apiNotes.map((apiNote: ApiNote) => ({
-      ...apiNote,
-      type: getTypeFromTags(apiNote.tags) as Note['type'],
-      createdAt: new Date(apiNote.created_at),
-      updatedAt: new Date(apiNote.updated_at)
-    }))
-  } catch (error) {
-    console.error('加载笔记失败:', error)
-    ElMessage.error('加载笔记失败')
-  } finally {
-    loading.value = false
-  }
-}
 
-// 根据标签推断笔记类型
-const getTypeFromTags = (tags: string[]): string => {
-  if (tags.includes('highlight') || tags.includes('标记')) return 'highlight'
-  if (tags.includes('question') || tags.includes('问题')) return 'question'
-  if (tags.includes('summary') || tags.includes('总结')) return 'summary'
-  return 'thought'
+const getPageNumber = (coordJson: string): number | null => {
+  try {
+    const coord = JSON.parse(coordJson)
+    return coord.page || null
+  } catch (e) {
+    return null
+  }
 }
 
 const handleSearch = () => {
@@ -355,9 +298,11 @@ const setActiveCategory = (category: string) => {
   activeCategory.value = category
 }
 
-const selectNote = (note: Note) => {
+const selectNote = (note: NoteDTO) => {
   selectedNoteId.value = note.id
   emit('noteSelect', note.id)
+  
+  // 尝试解析坐标并跳转 (通常由父组件处理，这里只需emit)
 }
 
 const createNote = () => {
@@ -365,35 +310,28 @@ const createNote = () => {
   editingNote.value = null
   // 重置表单
   newNote.value = {
-    type: 'thought',
-    title: '',
     content: '',
-    highlightText: '',
-    page: 1,
-    tags: []
+    referenceText: '',
+    coord: JSON.stringify({ page: 1 }), // 默认第一页，实际应由外部传入或获取当前页
+    tags: [],
+    color: '#FFCC00'
   }
 }
 
-const editNote = (note: Note) => {
+const editNote = (note: NoteDTO) => {
   showEditDialog.value = true
   editingNote.value = note
   // 填充表单
   newNote.value = {
-    type: note.type,
-    title: note.title,
-    content: note.content,
-    highlightText: note.highlight_data?.text || '',
-    page: note.page_number,
-    tags: [...note.tags]
+    content: note.content || '',
+    referenceText: note.referenceText || '',
+    coord: note.coord,
+    tags: [...(note.tags || [])],
+    color: note.color || '#FFCC00'
   }
 }
 
 const saveNote = async () => {
-  if (!newNote.value.content.trim()) {
-    ElMessage.warning('请输入笔记内容')
-    return
-  }
-
   if (!props.documentId) {
     ElMessage.error('文档ID不能为空')
     return
@@ -401,56 +339,47 @@ const saveNote = async () => {
 
   loading.value = true
   try {
-    const noteData = {
-      document_id: props.documentId,
-      title: newNote.value.title || '无标题',
-      content: newNote.value.content,
-      page_number: newNote.value.page,
-      tags: [...newNote.value.tags, newNote.value.type],
-      highlight_data: newNote.value.highlightText ? {
-        text: newNote.value.highlightText,
-        start_offset: 0,
-        end_offset: newNote.value.highlightText.length,
-        color: getHighlightColor(newNote.value.type),
-        position: { x: 0, y: 0, width: 0, height: 0 }
-      } : undefined
-    }
-
     if (editingNote.value) {
       // 更新笔记
-      const response = await updateNoteApi(editingNote.value.id, noteData)
+      const updateData = {
+        id: editingNote.value.id,
+        content: newNote.value.content,
+        color: newNote.value.color,
+        tags: newNote.value.tags
+      }
+      const response = await updateNoteApi(updateData)
       if (response.code === 200) {
         ElMessage.success('笔记更新成功')
         emit('noteUpdate', editingNote.value.id)
+        emit('refresh-notes')
       }
     } else {
       // 创建新笔记
-      const response = await createNoteApi(noteData)
+      const createData: NoteCreateRequest = {
+        documentId: props.documentId,
+        content: newNote.value.content,
+        referenceText: newNote.value.referenceText,
+        coord: newNote.value.coord,
+        color: newNote.value.color,
+        tags: newNote.value.tags
+      }
+      
+      const response = await createNoteApi(createData)
       if (response.code === 200) {
         ElMessage.success('笔记创建成功')
         emit('noteCreate', newNote.value.content)
+        emit('refresh-notes')
       }
     }
     
     showCreateDialog.value = false
     showEditDialog.value = false
-    await loadNotes()
   } catch (error) {
     console.error('保存笔记失败:', error)
     ElMessage.error('保存笔记失败')
   } finally {
     loading.value = false
   }
-}
-
-const getHighlightColor = (type: Note['type']): string => {
-  const colors = {
-    highlight: '#fbbf24',
-    thought: '#3b82f6',
-    question: '#ef4444',
-    summary: '#10b981'
-  }
-  return colors[type]
 }
 
 const handleDialogClose = () => {
@@ -463,7 +392,7 @@ const handleNoteAction = async (command: string) => {
   const [action, noteId] = command.split('-')
   
   if (action === 'edit') {
-    const note = notes.value.find(n => n.id === noteId)
+    const note = props.notes?.find(n => n.id === noteId)
     if (note) {
       editNote(note)
     }
@@ -477,7 +406,7 @@ const handleNoteAction = async (command: string) => {
         if (response.code === 200) {
           ElMessage.success('笔记已删除')
           emit('noteDelete', noteId)
-          await loadNotes()
+          emit('refresh-notes')
         }
       } catch (error) {
         console.error('删除笔记失败:', error)
@@ -491,27 +420,16 @@ const handleNoteAction = async (command: string) => {
   }
 }
 
-const getNoteTypeLabel = (type: Note['type']) => {
-  const labels = {
-    highlight: '标记',
-    thought: '想法',
-    question: '问题',
-    summary: '总结'
-  }
-  return labels[type]
+const getTagColor = (tag: string): 'primary' | 'success' | 'warning' | 'info' | 'danger' => {
+  if (tag === '重点') return 'warning'
+  if (tag === '疑问') return 'danger'
+  if (tag === '总结') return 'success'
+  return 'primary'
 }
 
-const getNoteTypeColor = (type: Note['type']): 'primary' | 'success' | 'warning' | 'info' | 'danger' => {
-  const colors: Record<Note['type'], 'primary' | 'success' | 'warning' | 'info' | 'danger'> = {
-    highlight: 'warning',
-    thought: 'primary',
-    question: 'danger',
-    summary: 'success'
-  }
-  return colors[type]
-}
-
-const formatTime = (date: Date) => {
+const formatTime = (timeStr: string) => {
+  if (!timeStr) return ''
+  const date = new Date(timeStr)
   const now = new Date()
   const diff = now.getTime() - date.getTime()
   const days = Math.floor(diff / (1000 * 60 * 60 * 24))
@@ -531,53 +449,6 @@ const formatTime = (date: Date) => {
     return date.toLocaleDateString()
   }
 }
-
-// 生命周期
-onMounted(() => {
-  // 加载示例数据（类型安全，字段对齐API定义）
-  notes.value = [
-    {
-      id: 'note_example_1',
-      document_id: props.documentId || 'doc_example',
-      title: '示例标记',
-      content: '这个概念很重要，需要重点理解',
-      page_number: 15,
-      tags: ['highlight'],
-      type: 'highlight',
-      createdAt: new Date(Date.now() - 1000 * 60 * 30), // 30分钟前
-      updatedAt: new Date(Date.now() - 1000 * 60 * 30),
-      highlight_data: {
-        text: '机器学习是人工智能的一个重要分支',
-        start_offset: 0,
-        end_offset: '机器学习是人工智能的一个重要分支'.length,
-        color: getHighlightColor('highlight'),
-        position: { x: 0, y: 0, width: 0, height: 0 }
-      }
-    },
-    {
-      id: 'note_example_2',
-      document_id: props.documentId || 'doc_example',
-      title: '示例问题',
-      content: '这里的算法复杂度是如何计算的？需要进一步研究',
-      page_number: 23,
-      tags: ['question'],
-      type: 'question',
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2小时前
-      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 2)
-    },
-    {
-      id: 'note_example_3',
-      document_id: props.documentId || 'doc_example',
-      title: '示例总结',
-      content: '本章总结：深度学习的三个核心要素是数据、算法和计算力',
-      page_number: 45,
-      tags: ['summary'],
-      type: 'summary',
-      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1天前
-      updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24)
-    }
-  ]
-})
 </script>
 
 <style lang="scss" scoped>
@@ -782,7 +653,7 @@ onMounted(() => {
     
     &:hover {
       transform: translateY(-2px);
-      box-shadow: 0 8px 25px rgba(16, 163, 127, 0.4);
+      box-shadow: 0 4px 12px rgba(16, 163, 127, 0.3);
       
       &::before {
         left: 100%;
@@ -790,244 +661,8 @@ onMounted(() => {
     }
     
     &:active {
-      transform: translateY(-1px);
+      transform: translateY(0);
     }
-  }
-}
-
-.empty-state {
-  padding: 40px 20px;
-  text-align: center;
-  animation: fadeIn 0.5s ease;
-  
-  .el-empty {
-    :deep(.el-empty__image) {
-      transition: all 0.3s ease;
-      
-      &:hover {
-        transform: scale(1.1);
-      }
-    }
-  }
-}
-
-// 对话框样式优化
-:deep(.el-dialog) {
-  border-radius: 16px;
-  overflow: hidden;
-  
-  .el-dialog__header {
-    background: linear-gradient(135deg, #fafafa, #f5f5f5);
-    border-bottom: 1px solid #e5e5e5;
-    padding: 20px 24px 16px;
-  }
-  
-  .el-dialog__body {
-    padding: 24px;
-  }
-  
-  .el-form-item__label {
-    color: #374151;
-    font-weight: 500;
-  }
-  
-  .el-input {
-    .el-input__wrapper {
-      border-radius: 8px;
-      transition: all 0.3s ease;
-      
-      &:hover {
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-      }
-      
-      &.is-focus {
-        box-shadow: 0 4px 12px rgba(16, 163, 127, 0.2);
-      }
-    }
-  }
-  
-  .el-textarea {
-    .el-textarea__inner {
-      border-radius: 8px;
-      transition: all 0.3s ease;
-      
-      &:hover {
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-      }
-      
-      &:focus {
-        box-shadow: 0 4px 12px rgba(16, 163, 127, 0.2);
-      }
-    }
-  }
-  
-  .el-select {
-    .el-select__wrapper {
-      border-radius: 8px;
-      transition: all 0.3s ease;
-      
-      &:hover {
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-      }
-      
-      &.is-focused {
-        box-shadow: 0 4px 12px rgba(16, 163, 127, 0.2);
-      }
-    }
-  }
-  
-  .el-dialog__footer {
-    padding: 16px 24px 24px;
-    
-    .el-button {
-      border-radius: 8px;
-      transition: all 0.3s ease;
-      
-      &:hover {
-        transform: translateY(-1px);
-      }
-      
-      &.el-button--primary {
-        background: linear-gradient(135deg, #10a37f, #0d8f6b);
-        border: none;
-        
-        &:hover {
-          box-shadow: 0 4px 12px rgba(16, 163, 127, 0.4);
-        }
-      }
-    }
-  }
-}
-
-// 标签样式
-:deep(.el-tag) {
-  font-size: 11px;
-  height: 20px;
-  line-height: 18px;
-  border-radius: 10px;
-  transition: all 0.2s ease;
-  
-  &:hover {
-    transform: scale(1.05);
-  }
-  
-  &.el-tag--warning {
-    background: linear-gradient(135deg, #fef3c7, #fde68a);
-    border-color: #f59e0b;
-  }
-  
-  &.el-tag--primary {
-    background: linear-gradient(135deg, #dbeafe, #bfdbfe);
-    border-color: #3b82f6;
-  }
-  
-  &.el-tag--danger {
-    background: linear-gradient(135deg, #fce7f3, #fbcfe8);
-    border-color: #ec4899;
-  }
-  
-  &.el-tag--success {
-    background: linear-gradient(135deg, #d1fae5, #a7f3d0);
-    border-color: #10b981;
-  }
-}
-
-// 动画关键帧
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-// 移动端适配
-@media (max-width: 768px) {
-  .notes-header {
-    padding: 12px;
-    
-    .filter-tabs {
-      margin-top: 8px;
-      
-      :deep(.el-button-group) {
-        .el-button {
-          font-size: 11px;
-          padding: 4px 6px;
-        }
-      }
-    }
-  }
-  
-  .note-item {
-    padding: 10px 12px;
-    
-    &:hover {
-      transform: translateX(2px);
-    }
-  }
-  
-  .note-content {
-    .note-text {
-      font-size: 13px;
-    }
-    
-    .note-highlight {
-      font-size: 12px;
-      padding: 6px;
-    }
-  }
-  
-  .note-footer {
-    .note-time {
-      font-size: 11px;
-    }
-  }
-  
-  .notes-footer {
-    padding: 12px;
-  }
-  
-  .empty-state {
-    padding: 30px 15px;
-  }
-  
-  :deep(.el-dialog) {
-    margin: 5vh auto;
-    width: 90% !important;
-    
-    .el-dialog__header {
-      padding: 16px 20px 12px;
-    }
-    
-    .el-dialog__body {
-      padding: 20px;
-    }
-    
-    .el-dialog__footer {
-      padding: 12px 20px 20px;
-    }
-  }
-}
-
-// 平板适配
-@media (max-width: 1024px) and (min-width: 769px) {
-  .notes-header {
-    padding: 14px;
-  }
-  
-  .note-item {
-    padding: 11px 14px;
-  }
-  
-  .notes-footer {
-    padding: 14px;
-  }
-  
-  :deep(.el-dialog) {
-    width: 70% !important;
   }
 }
 </style>

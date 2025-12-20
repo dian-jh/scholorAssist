@@ -5,13 +5,18 @@
       <!-- The main content, like the PDF viewer, will go here -->
       <p>Main Content Area</p>
     </div>
-    <AiChatPanel />
+    <AiChatPanel :document-id="documentId" />
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import LiteratureNote from './components/LiteratureNote.vue'
-import AiChatPanel from './components/AiChatPanel.vue'
+import AiChatPanel from '@/components/Reader/AiChatPanel.vue'
+
+const route = useRoute()
+const documentId = computed(() => route.params.id as string || '')
 </script>
 
 <style scoped lang="scss">
