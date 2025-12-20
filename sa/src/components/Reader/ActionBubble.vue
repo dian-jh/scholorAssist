@@ -1,89 +1,89 @@
 <template>
-  <transition name="action-bubble-fade">
+  <transition name="fade">
     <div 
       v-if="visible"
       class="action-bubble"
       :style="{ left: x + 'px', top: y + 'px' }"
-      role="dialog"
-      aria-label="文本操作浮动框"
+      @mousedown.stop 
     >
       <div class="bubble-content">
-        <button class="bubble-btn" @click="$emit('highlight')" title="高亮文本">
-          🖍️ 高亮
+        <button class="icon-btn" @click="$emit('highlight')" title="高亮">
+           🖍️
         </button>
-        <button class="bubble-btn" @click="$emit('add-note')" title="添加笔记">
-          📝 添加笔记
+        <button class="icon-btn" @click="$emit('add-note')" title="添加笔记">
+           📝
         </button>
-        <button class="bubble-btn" @click="$emit('ask-ai')" title="询问AI">
-          🤖 询问AI
+        <div class="divider"></div>
+        <button class="icon-btn" @click="$emit('ask-ai')" title="AI 解释">
+           🤖
         </button>
-        <button class="bubble-btn" @click="$emit('copy')" title="复制文本">
-          📋 复制
+        <button class="icon-btn" @click="$emit('copy')" title="复制">
+           📋
         </button>
       </div>
     </div>
   </transition>
-  
 </template>
 
 <script setup lang="ts">
 interface Props {
-  visible: boolean
-  x: number
-  y: number
+  visible: boolean;
+  x: number;
+  y: number;
 }
-defineProps<Props>()
-defineEmits<{
-  'highlight': []
-  'add-note': []
-  'ask-ai': []
-  'copy': []
-}>()
+defineProps<Props>();
+defineEmits(['highlight', 'add-note', 'ask-ai', 'copy']);
 </script>
 
 <style scoped>
 .action-bubble {
-  position: fixed;
-  z-index: 5000;
-  background: #111827;
-  color: #fff;
-  border-radius: 10px;
-  box-shadow: 0 12px 24px rgba(0,0,0,0.18);
-  padding: 8px 10px;
-  transform-origin: center;
-  backdrop-filter: saturate(180%) blur(6px);
-}
-.bubble-content {
-  display: flex;
-  gap: 8px;
-}
-.bubble-btn {
-  appearance: none;
-  border: none;
-  padding: 6px 10px;
-  border-radius: 8px;
-  background: rgba(255,255,255,0.08);
-  color: #fff;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all .18s ease;
-}
-.bubble-btn:hover { 
-  background: rgba(255,255,255,0.16);
-  transform: translateY(-1px);
-}
-.bubble-btn:active { 
-  transform: translateY(0);
+  position: fixed; /* 使用 fixed 确保相对于窗口定位 */
+  z-index: 9999;
+  background: #333;
+  border-radius: 6px;
+  padding: 4px 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  transform: translateX(-50%); /* 居中对齐鼠标 */
+  pointer-events: auto;
 }
 
-/* 动画 */
-.action-bubble-fade-enter-active,
-.action-bubble-fade-leave-active {
-  transition: opacity .16s ease, transform .16s ease;
+.bubble-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
-.action-bubble-fade-enter-from,
-.action-bubble-fade-leave-to {
+
+.icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 4px;
+  border-radius: 4px;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-btn:hover {
+  background: rgba(255,255,255,0.2);
+}
+
+.divider {
+  width: 1px;
+  height: 16px;
+  background: rgba(255,255,255,0.3);
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
   opacity: 0;
-  transform: scale(0.96);
+  transform: translate(-50%, 10px); /* 出现时有轻微上浮效果 */
 }
 </style>

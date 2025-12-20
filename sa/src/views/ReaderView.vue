@@ -15,6 +15,7 @@
       <ModernPdfReader 
         v-if="selectedDocument"
         :document="selectedDocument"
+        :document-id="selectedDocument?.id"
         @close="closeDocument"
         @progress-update="updateReadProgress"
       />

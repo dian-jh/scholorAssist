@@ -184,12 +184,6 @@ public class NoteServiceImpl implements NoteService {
         if (!StringUtils.hasText(request.getDocumentId())) {
             throw NoteException.invalidParameter("文档ID不能为空");
         }
-        if (!StringUtils.hasText(request.getTitle())) {
-            throw NoteException.invalidParameter("笔记标题不能为空");
-        }
-        if (!StringUtils.hasText(request.getContent())) {
-            throw NoteException.invalidParameter("笔记内容不能为空");
-        }
         if (request.getTags() != null && request.getTags().length > 10) {
             throw NoteException.invalidParameter("标签数量不能超过10个");
         }

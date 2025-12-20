@@ -39,7 +39,7 @@ public class NoteCreateRequest implements Serializable {
     /**
      * 笔记标题
      */
-    @NotBlank(message = "笔记标题不能为空")
+    //@NotBlank(message = "笔记标题不能为空")
     @Size(min = 1, max = 100, message = "笔记标题长度必须在1-100字符之间")
     @Schema(description = "笔记标题", example = "重要概念总结", required = true)
     private String title;
@@ -47,7 +47,7 @@ public class NoteCreateRequest implements Serializable {
     /**
      * 笔记内容
      */
-    @NotBlank(message = "笔记内容不能为空")
+    //@NotBlank(message = "笔记内容不能为空")
     @Size(max = 10000, message = "笔记内容不能超过10000字符")
     @Schema(description = "笔记内容", example = "这一章节介绍了Transformer的核心思想...", required = true)
     private String content;
